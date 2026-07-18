@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reservas Barbería</title>
+  </head>
+  <body>
+    <h1>Reservas Barbería</h1>
+
+    <form id="reservationForm">
+      <label>
+        Nombre:
+        <input type="text" id="customerName" required />
+      </label>
+      <label>
+        Teléfono:
+        <input type="text" id="phone" />
+      </label>
+      <label>
+        Servicio:
+        <select id="serviceId" required></select>
+      </label>
+      <label>
+        Fecha y hora:
+        <input type="datetime-local" id="startIso" required />
+      </label>
+      <button type="submit">Crear reserva</button>
+    </form>
+
+    <div id="status"></div>
+    <button type="button" onclick="window.downloadCsv()">Descargar CSV</button>
+    <div id="reservationsList"></div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
