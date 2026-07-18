@@ -77,11 +77,3 @@ export function updateReservationStatus(id: number, status: string) {
   return db.reservations[idx];
 }
 
-export function readDb() {
-  if (!fs.existsSync(DB_PATH)) {
-    const init = { services: [], reservations: [] };
-    fs.writeFileSync(DB_PATH, JSON.stringify(init, null, 2));
-  }
-  const raw = fs.readFileSync(DB_PATH, 'utf-8');
-  return JSON.parse(raw);
-}

@@ -6,9 +6,10 @@ import { initDb } from './services/db';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+const publicDir = path.resolve(process.cwd(), 'src', 'public');
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(publicDir));
 
 app.get('/api/ping', (_req, res) => {
   res.json({ ok: true, message: 'pong' });

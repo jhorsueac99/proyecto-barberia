@@ -10,8 +10,9 @@ const reservations_1 = __importDefault(require("./controllers/reservations"));
 const db_1 = require("./services/db");
 const app = (0, express_1.default)();
 const PORT = Number(process.env.PORT) || 3000;
+const publicDir = path_1.default.resolve(process.cwd(), 'src', 'public');
 app.use(express_1.default.json());
-app.use(express_1.default.static(path_1.default.join(__dirname, 'public')));
+app.use(express_1.default.static(publicDir));
 app.get('/api/ping', (_req, res) => {
     res.json({ ok: true, message: 'pong' });
 });
