@@ -45,11 +45,13 @@ async function getDb() {
   if (!db) {
     const { Low, JSONFile } = lowdbModule;
     const adapter = new JSONFile<DBData>(DB_PATH);
-    db = new Low<DBData>(adapter, defaultData);
+    db = new Low<DBData>(adapter);
   }
 
   await db.read();
-  db.data ||= { ...defaultData, services: [...defaultData.services], reservations: [] };
+  if (!db.data) {
+    db.data = { ...defaultData, services: [...defaultData.services], reservations: [] };
+  }
 
   if (!Array.isArray(db.data.services)) {
     db.data.services = [...defaultData.services];
