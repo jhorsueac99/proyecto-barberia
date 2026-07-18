@@ -45,7 +45,7 @@ exports.findOverlaps = findOverlaps;
 exports.getReservationById = getReservationById;
 exports.updateReservationStatus = updateReservationStatus;
 const path_1 = __importDefault(require("path"));
-const DB_PATH = path_1.default.join(__dirname, '..', 'data.json');
+const DB_PATH = path_1.default.resolve(process.cwd(), 'src', 'data.json');
 const defaultData = {
     services: [
         { id: 1, name: 'Corte clásico', duration_minutes: 30 },

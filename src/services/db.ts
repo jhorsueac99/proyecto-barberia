@@ -1,6 +1,6 @@
 import path from 'path';
 
-const DB_PATH = path.join(__dirname, '..', 'data.json');
+const DB_PATH = path.resolve(process.cwd(), 'src', 'data.json');
 
 type Service = {
   id: number;
