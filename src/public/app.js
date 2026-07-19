@@ -2,10 +2,12 @@ const form = document.getElementById('reservationForm');
 const serviceSelect = document.getElementById('serviceId');
 const statusBox = document.getElementById('status');
 const reservationsList = document.getElementById('reservationsList');
+const downloadCsvButton = document.getElementById('downloadCsvButton');
 
 function renderStatus(message, ok = true) {
   statusBox.textContent = message;
-  statusBox.style.color = ok ? 'green' : 'red';
+  statusBox.className = `rounded-2xl px-4 py-3 text-sm font-medium ${ok ? 'bg-emerald-500/15 text-emerald-300' : 'bg-rose-500/15 text-rose-300'}`;
+  statusBox.classList.remove('hidden');
 }
 
 async function loadServices() {
@@ -27,38 +29,44 @@ async function loadReservations() {
   reservationsList.innerHTML = '';
 
   if (!data.reservations.length) {
-    reservationsList.innerHTML = '<p>No hay reservas registradas.</p>';
+    reservationsList.innerHTML = '<p class="rounded-2xl bg-slate-800/80 px-4 py-6 text-sm text-slate-300">No hay reservas registradas.</p>';
     return;
   }
 
   const table = document.createElement('table');
+  table.className = 'min-w-full divide-y divide-white/10 text-left text-sm text-slate-200';
   table.innerHTML = `
-    <thead>
+    <thead class="bg-slate-800/90 text-xs uppercase tracking-[0.2em] text-slate-400">
       <tr>
-        <th>ID</th>
-        <th>Cliente</th>
-        <th>Servicio</th>
-        <th>Inicio</th>
-        <th>Estado</th>
-        <th>Acción</th>
+        <th class="px-4 py-3">ID</th>
+        <th class="px-4 py-3">Cliente</th>
+        <th class="px-4 py-3">Servicio</th>
+        <th class="px-4 py-3">Inicio</th>
+        <th class="px-4 py-3">Estado</th>
+        <th class="px-4 py-3 text-right">Acción</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody class="divide-y divide-white/10 bg-slate-900/60"></tbody>
   `;
 
   const tbody = table.querySelector('tbody');
 
   data.reservations.forEach((reservation) => {
     const row = document.createElement('tr');
+    row.className = 'hover:bg-white/5';
     row.innerHTML = `
-      <td>${reservation.id}</td>
-      <td>${reservation.customer_name}</td>
-      <td>${reservation.service_id}</td>
-      <td>${reservation.start_iso}</td>
-      <td>${reservation.status}</td>
-      <td>
-        <button data-id="${reservation.id}" data-action="confirm">Confirmar</button>
-        <button data-id="${reservation.id}" data-action="cancel">Cancelar</button>
+      <td class="px-4 py-3 font-medium text-slate-100">${reservation.id}</td>
+      <td class="px-4 py-3 text-slate-200">${reservation.customer_name}</td>
+      <td class="px-4 py-3 text-slate-300">${reservation.service_id}</td>
+      <td class="px-4 py-3 text-slate-300">${reservation.start_iso}</td>
+      <td class="px-4 py-3">
+        <span class="rounded-full bg-slate-800 px-2.5 py-1 text-xs font-semibold text-amber-300">${reservation.status}</span>
+      </td>
+      <td class="px-4 py-3">
+        <div class="flex justify-end gap-2">
+          <button data-id="${reservation.id}" data-action="confirm" class="rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/30">Confirmar</button>
+          <button data-id="${reservation.id}" data-action="cancel" class="rounded-lg bg-rose-500/20 px-3 py-1.5 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/30">Cancelar</button>
+        </div>
       </td>
     `;
     tbody.appendChild(row);
@@ -164,7 +172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadServices();
     await loadReservations();
   } catch (error) {
-    console.error('Error inicializando frontend', error);
+    console.error('Error inicializando frontend - app.js:175', error);
     renderStatus('No se pudo cargar la interfaz.', false);
   }
 });
@@ -179,3 +187,7 @@ window.downloadCsv = async function downloadCsv() {
   link.click();
   window.URL.revokeObjectURL(url);
 };
+
+downloadCsvButton.addEventListener('click', async () => {
+  await window.downloadCsv();
+});
