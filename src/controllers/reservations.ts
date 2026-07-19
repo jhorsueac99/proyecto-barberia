@@ -141,13 +141,13 @@ export default {
         try {
           await sendTelegramMessage(String(targetChat), `📅 Nueva reserva\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nServicio: ${service.name}\nInicio: ${formatAppointment(reservation.start_iso)}\nCancelar: ${cancelUrl}`);
         } catch (error) {
-          console.error('Error enviando Telegram', error);
+          console.error('Error enviando Telegram - reservations.ts:144', error);
         }
       }
 
       return res.status(201).json({ reservation: withServiceName(reservation, services), cancelUrl });
     } catch (error) {
-      console.error('Error creando reserva', error);
+      console.error('Error creando reserva - reservations.ts:150', error);
       return res.status(500).json({ error: 'Error interno' });
     }
   },
@@ -171,13 +171,13 @@ export default {
         try {
           await sendTelegramMessage(String(targetChat), `❌ Reserva cancelada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${formatAppointment(reservation.start_iso)}`);
         } catch (error) {
-          console.error('Error enviando Telegram (cancelación)', error);
+          console.error('Error enviando Telegram (cancelación) - reservations.ts:174', error);
         }
       }
 
       return res.json({ ok: true, reservation: updated });
     } catch (error) {
-      console.error('Error eliminando reserva', error);
+      console.error('Error eliminando reserva - reservations.ts:180', error);
       return res.status(500).json({ error: 'Error interno' });
     }
   },
@@ -204,13 +204,13 @@ export default {
         try {
           await sendTelegramMessage(String(targetChat), `✅ Reserva confirmada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${formatAppointment(reservation.start_iso)}`);
         } catch (error) {
-          console.error('Error enviando Telegram (confirmación)', error);
+          console.error('Error enviando Telegram (confirmación) - reservations.ts:207', error);
         }
       }
 
       return res.json({ ok: true, reservation: updated });
     } catch (error) {
-      console.error('Error confirmando reserva', error);
+      console.error('Error confirmando reserva - reservations.ts:213', error);
       return res.status(500).json({ error: 'Error interno' });
     }
   },
@@ -229,7 +229,7 @@ export default {
 
       return res.json({ reservation });
     } catch (error) {
-      console.error('Error obteniendo reserva', error);
+      console.error('Error obteniendo reserva - reservations.ts:232', error);
       return res.status(500).json({ error: 'Error interno' });
     }
   }

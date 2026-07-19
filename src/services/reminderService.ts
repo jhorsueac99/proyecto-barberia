@@ -23,6 +23,6 @@ export async function sendPendingReminders() {
 }
 
 export function startReminderScheduler() {
-  void sendPendingReminders().catch((error) => console.error('Error enviando recordatorios', error));
-  setInterval(() => void sendPendingReminders().catch((error) => console.error('Error enviando recordatorios', error)), REMINDER_INTERVAL_MS);
+  void sendPendingReminders().catch((error) => console.error('Error enviando recordatorios - reminderService.ts:26', error));
+  setInterval(() => void sendPendingReminders().catch((error) => console.error('Error enviando recordatorios - reminderService.ts:27', error)), REMINDER_INTERVAL_MS);
 }
