@@ -1,4 +1,5 @@
 import path from 'path';
+import { JSONFile, Low } from 'lowdb';
 
 const DB_PATH = path.resolve(process.cwd(), 'src', 'data.json');
 
@@ -34,16 +35,10 @@ const defaultData: DBData = {
   reservations: []
 };
 
-let lowdbModule: typeof import('lowdb') | null = null;
 let db: any = null;
 
 async function getDb() {
-  if (!lowdbModule) {
-    lowdbModule = await import('lowdb');
-  }
-
   if (!db) {
-    const { Low, JSONFile } = lowdbModule;
     const adapter = new JSONFile<DBData>(DB_PATH);
     db = new Low<DBData>(adapter);
   }

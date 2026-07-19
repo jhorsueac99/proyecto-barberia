@@ -1,13 +1,11 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const db_1 = require("../services/db");
-const telegramService_1 = require("../services/telegramService");
+import { addReservation, deleteReservation, findOverlaps, getAllReservations, getReservationById, getServices, updateReservationStatus } from '../services/db.js';
+import { sendTelegramMessage } from '../services/telegramService.js';
 function addMinutes(iso, minutes) {
     const date = new Date(iso);
     date.setMinutes(date.getMinutes() + minutes);
     return date.toISOString();
 }
-exports.default = {
+export default {
     registerRoutes(app) {
         app.get('/api/services', this.services.bind(this));
         app.get('/api/reservations', this.list.bind(this));
@@ -19,15 +17,15 @@ exports.default = {
         app.get('/api/reservations/:id', this.getById.bind(this));
     },
     async services(_req, res) {
-        const services = await (0, db_1.getServices)();
+        const services = await getServices();
         return res.json({ services });
     },
     async list(_req, res) {
-        const reservations = await (0, db_1.getAllReservations)();
+        const reservations = await getAllReservations();
         return res.json({ reservations });
     },
     async exportCsv(_req, res) {
-        const reservations = await (0, db_1.getAllReservations)();
+        const reservations = await getAllReservations();
         const header = ['id', 'cliente', 'telefono', 'servicio', 'inicio', 'estado'];
         const rows = reservations.map((reservation) => [
             reservation.id,
@@ -62,17 +60,17 @@ exports.default = {
             if (Number.isNaN(parsedStart.getTime()) || parsedStart <= new Date()) {
                 return res.status(400).json({ error: 'La fecha debe ser futura y válida.' });
             }
-            const services = await (0, db_1.getServices)();
+            const services = await getServices();
             const service = services.find((item) => Number(item.id) === Number(serviceId));
             if (!service) {
                 return res.status(404).json({ error: 'Servicio no encontrado' });
             }
             const endIso = addMinutes(startIso, service.duration_minutes);
-            const overlaps = await (0, db_1.findOverlaps)(service.id, startIso, endIso);
+            const overlaps = await findOverlaps(service.id, startIso, endIso);
             if (overlaps.length > 0) {
                 return res.status(409).json({ error: 'Horario no disponible', overlaps });
             }
-            const reservation = await (0, db_1.addReservation)({
+            const reservation = await addReservation({
                 service_id: service.id,
                 customer_name: name,
                 phone: cleanPhone,
@@ -84,7 +82,7 @@ exports.default = {
             const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
             if (targetChat) {
                 try {
-                    await (0, telegramService_1.sendTelegramMessage)(String(targetChat), `Nueva reserva\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nServicio: ${service.name}\nInicio: ${reservation.start_iso}`);
+                    await sendTelegramMessage(String(targetChat), `Nueva reserva\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nServicio: ${service.name}\nInicio: ${reservation.start_iso}`);
                 }
                 catch (error) {
                     console.error('Error enviando Telegram', error);
@@ -103,18 +101,18 @@ exports.default = {
             if (!id) {
                 return res.status(400).json({ error: 'ID inválido' });
             }
-            const reservation = await (0, db_1.getReservationById)(id);
+            const reservation = await getReservationById(id);
             if (!reservation) {
                 return res.status(404).json({ error: 'Reserva no encontrada' });
             }
-            const removed = await (0, db_1.deleteReservation)(id);
+            const removed = await deleteReservation(id);
             if (!removed) {
                 return res.status(404).json({ error: 'Reserva no encontrada' });
             }
             const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
             if (targetChat) {
                 try {
-                    await (0, telegramService_1.sendTelegramMessage)(String(targetChat), `Reserva cancelada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${reservation.start_iso}`);
+                    await sendTelegramMessage(String(targetChat), `Reserva cancelada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${reservation.start_iso}`);
                 }
                 catch (error) {
                     console.error('Error enviando Telegram (cancelación)', error);
@@ -133,15 +131,15 @@ exports.default = {
             if (!id) {
                 return res.status(400).json({ error: 'ID inválido' });
             }
-            const reservation = await (0, db_1.getReservationById)(id);
+            const reservation = await getReservationById(id);
             if (!reservation) {
                 return res.status(404).json({ error: 'Reserva no encontrada' });
             }
-            const updated = await (0, db_1.updateReservationStatus)(id, 'confirmed');
+            const updated = await updateReservationStatus(id, 'confirmed');
             const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
             if (targetChat) {
                 try {
-                    await (0, telegramService_1.sendTelegramMessage)(String(targetChat), `Reserva confirmada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${reservation.start_iso}`);
+                    await sendTelegramMessage(String(targetChat), `Reserva confirmada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${reservation.start_iso}`);
                 }
                 catch (error) {
                     console.error('Error enviando Telegram (confirmación)', error);
@@ -160,7 +158,7 @@ exports.default = {
             if (!id) {
                 return res.status(400).json({ error: 'ID inválido' });
             }
-            const reservation = await (0, db_1.getReservationById)(id);
+            const reservation = await getReservationById(id);
             if (!reservation) {
                 return res.status(404).json({ error: 'Reserva no encontrada' });
             }

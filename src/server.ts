@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import path from 'path';
-import reservations from './controllers/reservations';
-import { initDb } from './services/db';
+import reservations from './controllers/reservations.js';
+import { initDb } from './services/db.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;

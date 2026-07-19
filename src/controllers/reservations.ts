@@ -7,8 +7,8 @@ import {
   getReservationById,
   getServices,
   updateReservationStatus
-} from '../services/db';
-import { sendTelegramMessage } from '../services/telegramService';
+} from '../services/db.js';
+import { sendTelegramMessage } from '../services/telegramService.js';
 
 function addMinutes(iso: string, minutes: number) {
   const date = new Date(iso);
