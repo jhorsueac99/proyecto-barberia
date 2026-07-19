@@ -26,7 +26,9 @@
       "end_iso": "2026-09-18T17:30:00.000Z",
       "status": "confirmed",
       "chat_id": "YOUR_TELEGRAM_CHAT_ID",
-      "created_at": "2026-07-18T17:22:13.004Z"
+      "created_at": "2026-07-18T17:22:13.004Z",
+      "cancel_token": "8509c83a-92e2-4232-be6d-b9e0e01d913a",
+      "reminder_sent_at": null
     },
     {
       "id": 2,
@@ -37,7 +39,9 @@
       "end_iso": "2027-04-18T17:42:00.000Z",
       "status": "pending",
       "chat_id": "6566101671",
-      "created_at": "2026-07-18T18:01:53.380Z"
+      "created_at": "2026-07-18T18:01:53.380Z",
+      "cancel_token": "25783cf7-3462-4d4f-b064-14eb99537473",
+      "reminder_sent_at": null
     },
     {
       "id": 4,
@@ -48,7 +52,9 @@
       "end_iso": "2026-08-19T23:37:00.000Z",
       "status": "pending",
       "chat_id": "6566101671",
-      "created_at": "2026-07-18T18:20:17.790Z"
+      "created_at": "2026-07-18T18:20:17.790Z",
+      "cancel_token": "d6b2f5d6-eab0-4e1f-8638-b890b299a0b9",
+      "reminder_sent_at": null
     },
     {
       "id": 5,
@@ -59,7 +65,9 @@
       "end_iso": "2028-02-01T13:42:00.000Z",
       "status": "confirmed",
       "chat_id": "6566101671",
-      "created_at": "2026-07-19T13:03:09.047Z"
+      "created_at": "2026-07-19T13:03:09.047Z",
+      "cancel_token": "f60abf67-b190-4f41-b2f9-8b3031689403",
+      "reminder_sent_at": null
     }
   ]
 }

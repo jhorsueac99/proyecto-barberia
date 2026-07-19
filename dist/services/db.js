@@ -1,4 +1,5 @@
 import path from 'path';
+import { randomUUID } from 'crypto';
 import { JSONFile, Low } from 'lowdb';
 const DB_PATH = path.resolve(process.cwd(), 'src', 'data.json');
 const defaultData = {
@@ -25,6 +26,10 @@ async function getDb() {
     if (!Array.isArray(db.data.reservations)) {
         db.data.reservations = [];
     }
+    db.data.reservations.forEach((reservation) => {
+        reservation.cancel_token || (reservation.cancel_token = randomUUID());
+        reservation.reminder_sent_at ?? (reservation.reminder_sent_at = null);
+    });
     await db.write();
     return db;
 }
@@ -48,18 +53,12 @@ export async function addReservation(reservation) {
     await currentDb.write();
     return newReservation;
 }
-export async function deleteReservation(id) {
-    const currentDb = await getDb();
-    const before = currentDb.data.reservations.length;
-    currentDb.data.reservations = currentDb.data.reservations.filter((item) => item.id !== id);
-    await currentDb.write();
-    return before !== currentDb.data.reservations.length;
-}
 export async function findOverlaps(serviceId, startIso, endIso) {
     const currentDb = await getDb();
     const reservations = currentDb.data.reservations || [];
     return reservations.filter((reservation) => {
         return (reservation.service_id === serviceId &&
+            reservation.status !== 'cancelled' &&
             ((reservation.start_iso <= startIso && reservation.end_iso > startIso) ||
                 (reservation.start_iso < endIso && reservation.end_iso >= endIso) ||
                 (reservation.start_iso >= startIso && reservation.end_iso <= endIso)));
@@ -79,4 +78,17 @@ export async function updateReservationStatus(id, status) {
     currentDb.data.reservations[index].status = status;
     await currentDb.write();
     return currentDb.data.reservations[index];
+}
+export async function getReservationByCancelToken(cancelToken) {
+    const currentDb = await getDb();
+    return currentDb.data.reservations.find((item) => item.cancel_token === cancelToken) || null;
+}
+export async function markReminderSent(id) {
+    const currentDb = await getDb();
+    const reservation = currentDb.data.reservations.find((item) => item.id === id);
+    if (!reservation)
+        return null;
+    reservation.reminder_sent_at = new Date().toISOString();
+    await currentDb.write();
+    return reservation;
 }

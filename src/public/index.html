@@ -59,6 +59,7 @@
                 required
                 class="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-slate-50 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
               />
+              <small class="mt-2 block text-slate-400">Atendemos de lunes a sábado, de 9:00 a.m. a 8:00 p.m.</small>
             </label>
 
             <div id="status" class="hidden rounded-2xl px-4 py-3 text-sm font-medium"></div>
@@ -73,6 +74,8 @@
         </section>
 
         <section class="rounded-3xl border border-white/10 bg-slate-900/80 p-5 shadow-2xl shadow-black/20 sm:p-6">
+          <button id="adminButton" type="button" class="mb-4 rounded-xl border border-amber-400/40 px-3 py-2 text-sm font-medium text-amber-300">Abrir panel de administrador</button>
+          <div id="adminPanel" class="hidden">
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 class="text-2xl font-semibold text-white">Reservas</h2>
@@ -88,6 +91,7 @@
           </div>
 
           <div id="reservationsList" class="overflow-hidden rounded-2xl border border-white/10"></div>
+          </div>
         </section>
       </div>
     </main>

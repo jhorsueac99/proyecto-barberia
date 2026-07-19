@@ -1,15 +1,16 @@
 import path from 'path';
+import { randomUUID } from 'crypto';
 import { JSONFile, Low } from 'lowdb';
 
 const DB_PATH = path.resolve(process.cwd(), 'src', 'data.json');
 
-type Service = {
+export type Service = {
   id: number;
   name: string;
   duration_minutes: number;
 };
 
-type Reservation = {
+export type Reservation = {
   id: number;
   service_id: number;
   customer_name: string;
@@ -19,6 +20,8 @@ type Reservation = {
   status: string;
   chat_id?: string | null;
   created_at?: string;
+  cancel_token: string;
+  reminder_sent_at?: string | null;
 };
 
 type DBData = {
@@ -56,6 +59,11 @@ async function getDb() {
     db.data.reservations = [];
   }
 
+  db.data.reservations.forEach((reservation: Reservation) => {
+    reservation.cancel_token ||= randomUUID();
+    reservation.reminder_sent_at ??= null;
+  });
+
   await db.write();
   return db;
 }
@@ -85,14 +93,6 @@ export async function addReservation(reservation: Omit<Reservation, 'id' | 'crea
   return newReservation;
 }
 
-export async function deleteReservation(id: number): Promise<boolean> {
-  const currentDb = await getDb();
-  const before = currentDb.data.reservations.length;
-  currentDb.data.reservations = currentDb.data.reservations.filter((item: Reservation) => item.id !== id);
-  await currentDb.write();
-  return before !== currentDb.data.reservations.length;
-}
-
 export async function findOverlaps(serviceId: number, startIso: string, endIso: string) {
   const currentDb = await getDb();
   const reservations: Reservation[] = currentDb.data.reservations || [];
@@ -100,6 +100,7 @@ export async function findOverlaps(serviceId: number, startIso: string, endIso: 
   return reservations.filter((reservation) => {
     return (
       reservation.service_id === serviceId &&
+      reservation.status !== 'cancelled' &&
       ((reservation.start_iso <= startIso && reservation.end_iso > startIso) ||
         (reservation.start_iso < endIso && reservation.end_iso >= endIso) ||
         (reservation.start_iso >= startIso && reservation.end_iso <= endIso))
@@ -123,4 +124,19 @@ export async function updateReservationStatus(id: number, status: string) {
   currentDb.data.reservations[index].status = status;
   await currentDb.write();
   return currentDb.data.reservations[index];
+}
+
+export async function getReservationByCancelToken(cancelToken: string): Promise<Reservation | null> {
+  const currentDb = await getDb();
+  return currentDb.data.reservations.find((item: Reservation) => item.cancel_token === cancelToken) || null;
+}
+
+export async function markReminderSent(id: number) {
+  const currentDb = await getDb();
+  const reservation = currentDb.data.reservations.find((item: Reservation) => item.id === id);
+  if (!reservation) return null;
+
+  reservation.reminder_sent_at = new Date().toISOString();
+  await currentDb.write();
+  return reservation;
 }
