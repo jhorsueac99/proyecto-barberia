@@ -11,6 +11,7 @@ import {
 } from '../services/db.js';
 import { formatAppointment, isBusinessHours } from '../services/schedule.js';
 import { sendTelegramMessage } from '../services/telegramService.js';
+import { sendReservationEmail } from '../services/notifications.js';
 
 function addMinutes(iso: string, minutes: number) {
   const date = new Date(iso);
@@ -86,7 +87,7 @@ export default {
 
   async create(req: Request, res: Response) {
     try {
-      const { serviceId, customerName, phone = '', startIso } = req.body;
+      const { serviceId, customerName, phone = '', startIso, email = '' } = req.body;
       const name = String(customerName || '').trim();
       const cleanPhone = String(phone || '').trim();
       const parsedStart = new Date(startIso);
@@ -144,6 +145,17 @@ export default {
         } catch (error) {
           console.error('Error enviando Telegram - reservations.ts:144', error);
         }
+      }
+
+      if (email) {
+        const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+        sendReservationEmail(email, {
+          customerName: reservation.customer_name,
+          reservationId: reservation.id,
+          serviceName: service.name,
+          startTime: formatAppointment(reservation.start_iso),
+          cancelUrl: `${baseUrl}/cancel/${reservation.cancel_token}`
+        }).catch((error) => console.error('Error enviando email - reservations.ts', error));
       }
 
       return res.status(201).json({ reservation: withServiceName(reservation, services), cancelUrl });
