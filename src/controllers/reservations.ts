@@ -134,7 +134,8 @@ export default {
         reminder_sent_at: null
       });
 
-      const cancelUrl = `${req.protocol}://${req.get('host')}/cancel/${reservation.cancel_token}`;
+      const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+      const cancelUrl = `${baseUrl}/cancel/${reservation.cancel_token}`;
 
       const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
       if (targetChat) {
@@ -232,23 +233,42 @@ export default {
       console.error('Error obteniendo reserva - reservations.ts:232', error);
       return res.status(500).json({ error: 'Error interno' });
     }
-  }
+  },
 
   async cancelPage(req: Request, res: Response) {
-    const reservation = await getReservationByCancelToken(req.params.token);
-    if (!reservation) return res.status(404).send('Enlace de cancelación no válido.');
-    if (reservation.status === 'cancelled') return res.send('Esta reserva ya fue cancelada.');
+    try {
+      const reservation = await getReservationByCancelToken(req.params.token);
+      if (!reservation) return res.status(404).send('Enlace de cancelación no válido.');
+      if (reservation.status === 'cancelled') return res.send('Esta reserva ya fue cancelada.');
 
-    return res.send(`<!doctype html><html lang="es"><meta charset="utf-8"><title>Cancelar reserva</title><body style="font-family:system-ui;max-width:500px;margin:4rem auto;padding:1rem"><h1>Cancelar reserva</h1><p>¿Deseas cancelar la reserva de <strong>${escapeHtml(reservation.customer_name)}</strong>?</p><form method="post" action="/api/cancel/${reservation.cancel_token}"><button style="padding:.75rem 1rem;background:#b91c1c;color:white;border:0;border-radius:.5rem;cursor:pointer">Cancelar reserva</button></form></body></html>`);
+      return res.send(`<!doctype html><html lang="es"><meta charset="utf-8"><title>Cancelar reserva</title><body style="font-family:system-ui;max-width:500px;margin:4rem auto;padding:1rem"><h1>Cancelar reserva</h1><p>¿Deseas cancelar la reserva de <strong>${escapeHtml(reservation.customer_name)}</strong>?</p><form method="post" action="/api/cancel/${reservation.cancel_token}"><button style="padding:.75rem 1rem;background:#b91c1c;color:white;border:0;border-radius:.5rem;cursor:pointer">Cancelar reserva</button></form></body></html>`);
+    } catch (error) {
+      console.error('Error en cancelPage - reservations.ts', error);
+      return res.status(500).send('Error interno');
+    }
   },
 
   async cancelByToken(req: Request, res: Response) {
-    const reservation = await getReservationByCancelToken(req.params.token);
-    if (!reservation) return res.status(404).json({ error: 'Enlace de cancelación no válido.' });
-    if (reservation.status === 'cancelled') return res.json({ ok: true, message: 'La reserva ya estaba cancelada.' });
+    try {
+      const reservation = await getReservationByCancelToken(req.params.token);
+      if (!reservation) return res.status(404).json({ error: 'Enlace de cancelación no válido.' });
+      if (reservation.status === 'cancelled') return res.json({ ok: true, message: 'La reserva ya estaba cancelada.' });
 
-    await updateReservationStatus(reservation.id, 'cancelled');
-    await sendTelegramMessage(reservation.chat_id || '', `❌ Reserva cancelada por enlace\nID: ${reservation.id}\nCliente: ${reservation.customer_name}`);
-    return res.json({ ok: true, message: 'Reserva cancelada correctamente.' });
+      await updateReservationStatus(reservation.id, 'cancelled');
+
+      const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
+      if (targetChat) {
+        try {
+          await sendTelegramMessage(targetChat, `❌ Reserva cancelada por enlace\nID: ${reservation.id}\nCliente: ${reservation.customer_name}`);
+        } catch (error) {
+          console.error('Error enviando Telegram (cancelByToken) - reservations.ts', error);
+        }
+      }
+
+      return res.json({ ok: true, message: 'Reserva cancelada correctamente.' });
+    } catch (error) {
+      console.error('Error en cancelByToken - reservations.ts', error);
+      return res.status(500).json({ error: 'Error interno' });
+    }
   }
 };

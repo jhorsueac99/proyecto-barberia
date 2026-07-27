@@ -68,6 +68,58 @@
       "created_at": "2026-07-19T13:03:09.047Z",
       "cancel_token": "f60abf67-b190-4f41-b2f9-8b3031689403",
       "reminder_sent_at": null
+    },
+    {
+      "id": 6,
+      "service_id": 1,
+      "customer_name": "alexander",
+      "phone": "932868639",
+      "start_iso": "2027-07-22T17:12:00.000Z",
+      "end_iso": "2027-07-22T17:42:00.000Z",
+      "status": "cancelled",
+      "chat_id": "6566101671",
+      "cancel_token": "4f4725e8-c6ed-4bcd-9a3d-47e5685b2750",
+      "reminder_sent_at": null,
+      "created_at": "2026-07-26T23:53:48.863Z"
+    },
+    {
+      "id": 7,
+      "service_id": 2,
+      "customer_name": "karen",
+      "phone": "942161977",
+      "start_iso": "2027-02-20T17:12:00.000Z",
+      "end_iso": "2027-02-20T17:57:00.000Z",
+      "status": "pending",
+      "chat_id": "6566101671",
+      "cancel_token": "52e957a6-2bbe-4f1d-a195-90a00e64acd2",
+      "reminder_sent_at": null,
+      "created_at": "2026-07-27T00:25:13.619Z"
+    },
+    {
+      "id": 8,
+      "service_id": 2,
+      "customer_name": "karen",
+      "phone": "942161977",
+      "start_iso": "2027-08-09T17:12:00.000Z",
+      "end_iso": "2027-08-09T17:57:00.000Z",
+      "status": "pending",
+      "chat_id": "6566101671",
+      "cancel_token": "b4432740-a946-4c08-85b3-39cc4e97ddd1",
+      "reminder_sent_at": null,
+      "created_at": "2026-07-27T00:26:15.035Z"
+    },
+    {
+      "id": 9,
+      "service_id": 1,
+      "customer_name": "karen",
+      "phone": "989518450",
+      "start_iso": "2027-02-02T17:12:00.000Z",
+      "end_iso": "2027-02-02T17:42:00.000Z",
+      "status": "cancelled",
+      "chat_id": "6566101671",
+      "cancel_token": "04fbb5c4-6236-4b11-b499-aca567fba114",
+      "reminder_sent_at": null,
+      "created_at": "2026-07-27T00:26:46.603Z"
     }
   ]
 }

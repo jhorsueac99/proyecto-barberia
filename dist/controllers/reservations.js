@@ -105,20 +105,21 @@ export default {
                 cancel_token: randomUUID(),
                 reminder_sent_at: null
             });
-            const cancelUrl = `${req.protocol}://${req.get('host')}/cancel/${reservation.cancel_token}`;
+            const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+            const cancelUrl = `${baseUrl}/cancel/${reservation.cancel_token}`;
             const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
             if (targetChat) {
                 try {
                     await sendTelegramMessage(String(targetChat), `📅 Nueva reserva\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nServicio: ${service.name}\nInicio: ${formatAppointment(reservation.start_iso)}\nCancelar: ${cancelUrl}`);
                 }
                 catch (error) {
-                    console.error('Error enviando Telegram', error);
+                    console.error('Error enviando Telegram - reservations.ts:144', error);
                 }
             }
             return res.status(201).json({ reservation: withServiceName(reservation, services), cancelUrl });
         }
         catch (error) {
-            console.error('Error creando reserva', error);
+            console.error('Error creando reserva - reservations.ts:150', error);
             return res.status(500).json({ error: 'Error interno' });
         }
     },
@@ -139,13 +140,13 @@ export default {
                     await sendTelegramMessage(String(targetChat), `❌ Reserva cancelada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${formatAppointment(reservation.start_iso)}`);
                 }
                 catch (error) {
-                    console.error('Error enviando Telegram (cancelación)', error);
+                    console.error('Error enviando Telegram (cancelación) - reservations.ts:174', error);
                 }
             }
             return res.json({ ok: true, reservation: updated });
         }
         catch (error) {
-            console.error('Error eliminando reserva', error);
+            console.error('Error eliminando reserva - reservations.ts:180', error);
             return res.status(500).json({ error: 'Error interno' });
         }
     },
@@ -169,13 +170,13 @@ export default {
                     await sendTelegramMessage(String(targetChat), `✅ Reserva confirmada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${formatAppointment(reservation.start_iso)}`);
                 }
                 catch (error) {
-                    console.error('Error enviando Telegram (confirmación)', error);
+                    console.error('Error enviando Telegram (confirmación) - reservations.ts:207', error);
                 }
             }
             return res.json({ ok: true, reservation: updated });
         }
         catch (error) {
-            console.error('Error confirmando reserva', error);
+            console.error('Error confirmando reserva - reservations.ts:213', error);
             return res.status(500).json({ error: 'Error interno' });
         }
     },
@@ -192,26 +193,46 @@ export default {
             return res.json({ reservation });
         }
         catch (error) {
-            console.error('Error obteniendo reserva', error);
+            console.error('Error obteniendo reserva - reservations.ts:232', error);
             return res.status(500).json({ error: 'Error interno' });
         }
     },
     async cancelPage(req, res) {
-        const reservation = await getReservationByCancelToken(req.params.token);
-        if (!reservation)
-            return res.status(404).send('Enlace de cancelación no válido.');
-        if (reservation.status === 'cancelled')
-            return res.send('Esta reserva ya fue cancelada.');
-        return res.send(`<!doctype html><html lang="es"><meta charset="utf-8"><title>Cancelar reserva</title><body style="font-family:system-ui;max-width:500px;margin:4rem auto;padding:1rem"><h1>Cancelar reserva</h1><p>¿Deseas cancelar la reserva de <strong>${escapeHtml(reservation.customer_name)}</strong>?</p><form method="post" action="/api/cancel/${reservation.cancel_token}"><button style="padding:.75rem 1rem;background:#b91c1c;color:white;border:0;border-radius:.5rem;cursor:pointer">Cancelar reserva</button></form></body></html>`);
+        try {
+            const reservation = await getReservationByCancelToken(req.params.token);
+            if (!reservation)
+                return res.status(404).send('Enlace de cancelación no válido.');
+            if (reservation.status === 'cancelled')
+                return res.send('Esta reserva ya fue cancelada.');
+            return res.send(`<!doctype html><html lang="es"><meta charset="utf-8"><title>Cancelar reserva</title><body style="font-family:system-ui;max-width:500px;margin:4rem auto;padding:1rem"><h1>Cancelar reserva</h1><p>¿Deseas cancelar la reserva de <strong>${escapeHtml(reservation.customer_name)}</strong>?</p><form method="post" action="/api/cancel/${reservation.cancel_token}"><button style="padding:.75rem 1rem;background:#b91c1c;color:white;border:0;border-radius:.5rem;cursor:pointer">Cancelar reserva</button></form></body></html>`);
+        }
+        catch (error) {
+            console.error('Error en cancelPage - reservations.ts', error);
+            return res.status(500).send('Error interno');
+        }
     },
     async cancelByToken(req, res) {
-        const reservation = await getReservationByCancelToken(req.params.token);
-        if (!reservation)
-            return res.status(404).json({ error: 'Enlace de cancelación no válido.' });
-        if (reservation.status === 'cancelled')
-            return res.json({ ok: true, message: 'La reserva ya estaba cancelada.' });
-        await updateReservationStatus(reservation.id, 'cancelled');
-        await sendTelegramMessage(reservation.chat_id || '', `❌ Reserva cancelada por enlace\nID: ${reservation.id}\nCliente: ${reservation.customer_name}`);
-        return res.json({ ok: true, message: 'Reserva cancelada correctamente.' });
+        try {
+            const reservation = await getReservationByCancelToken(req.params.token);
+            if (!reservation)
+                return res.status(404).json({ error: 'Enlace de cancelación no válido.' });
+            if (reservation.status === 'cancelled')
+                return res.json({ ok: true, message: 'La reserva ya estaba cancelada.' });
+            await updateReservationStatus(reservation.id, 'cancelled');
+            const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
+            if (targetChat) {
+                try {
+                    await sendTelegramMessage(targetChat, `❌ Reserva cancelada por enlace\nID: ${reservation.id}\nCliente: ${reservation.customer_name}`);
+                }
+                catch (error) {
+                    console.error('Error enviando Telegram (cancelByToken) - reservations.ts', error);
+                }
+            }
+            return res.json({ ok: true, message: 'Reserva cancelada correctamente.' });
+        }
+        catch (error) {
+            console.error('Error en cancelByToken - reservations.ts', error);
+            return res.status(500).json({ error: 'Error interno' });
+        }
     }
 };
