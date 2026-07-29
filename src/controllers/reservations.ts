@@ -11,7 +11,7 @@ import {
 } from '../services/db.js';
 import { formatAppointment, isBusinessHours } from '../services/schedule.js';
 import { sendTelegramMessage } from '../services/telegramService.js';
-import { sendReservationEmail } from '../services/notifications.js';
+import { sendReservationEmail, sendEmail } from '../services/notifications.js';
 
 function addMinutes(iso: string, minutes: number) {
   const date = new Date(iso);
@@ -30,9 +30,11 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 function withServiceName(reservation: any, services: Awaited<ReturnType<typeof getServices>>) {
+  const service = services.find((s) => s.id === reservation.service_id);
   return {
     ...reservation,
-    service_name: services.find((service) => service.id === reservation.service_id)?.name || 'Servicio no disponible'
+    service_name: service?.name || 'Servicio no disponible',
+    service_description: service?.description || ''
   };
 }
 
@@ -56,7 +58,7 @@ export default {
 
   async services(_req: Request, res: Response) {
     const services = await getServices();
-    return res.json({ services });
+    return res.json(services);
   },
 
   async list(_req: Request, res: Response) {
@@ -109,7 +111,7 @@ export default {
       }
 
       const services = await getServices();
-      const service = services.find((item) => Number(item.id) === Number(serviceId));
+      const service = services.find((item) => item.id === serviceId);
       if (!service) {
         return res.status(404).json({ error: 'Servicio no encontrado' });
       }
@@ -125,8 +127,12 @@ export default {
 
       const reservation = await addReservation({
         service_id: service.id,
+        service_name: service.name,
+        service_price: service.price,
+        service_description: service.description || null,
         customer_name: name,
         phone: cleanPhone,
+        email: email || null,
         start_iso: startIso,
         end_iso: endIso,
         status: 'pending',
@@ -148,14 +154,12 @@ export default {
       }
 
       if (email) {
-        const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-        sendReservationEmail(email, {
-          customerName: reservation.customer_name,
-          reservationId: reservation.id,
-          serviceName: service.name,
-          startTime: formatAppointment(reservation.start_iso),
-          cancelUrl: `${baseUrl}/cancel/${reservation.cancel_token}`
-        }).catch((error) => console.error('Error enviando email - reservations.ts', error));
+        console.log(`Correo enviado al cliente ${email}`);
+        try {
+          await sendEmail({ ...reservation, service_name: service.name });
+        } catch (error) {
+          console.error('Error al enviar correo al cliente:', error);
+        }
       }
 
       return res.status(201).json({ reservation: withServiceName(reservation, services), cancelUrl });
@@ -185,6 +189,30 @@ export default {
           await sendTelegramMessage(String(targetChat), `❌ Reserva cancelada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${formatAppointment(reservation.start_iso)}`);
         } catch (error) {
           console.error('Error enviando Telegram (cancelación) - reservations.ts:174', error);
+        }
+      }
+
+      if (reservation.email) {
+        try {
+          const services = await getServices();
+          const service = services.find((s) => s.id === reservation.service_id);
+          await sendEmail({
+            ...reservation,
+            service_name: service?.name || 'Servicio'
+          }, {
+            subject: 'Cancelación de reserva Barbería',
+            body: `Hola ${reservation.customer_name},
+
+Tu reserva ha sido cancelada correctamente.
+
+- ID: ${reservation.id}
+- Servicio: ${service?.name || 'Servicio'}
+- Fecha y hora: ${formatAppointment(reservation.start_iso)}
+
+Si deseas volver a reservar, puedes hacerlo desde nuestra página.`
+          });
+        } catch (error) {
+          console.error('Error al enviar correo de cancelación:', error);
         }
       }
 
@@ -218,6 +246,30 @@ export default {
           await sendTelegramMessage(String(targetChat), `✅ Reserva confirmada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${formatAppointment(reservation.start_iso)}`);
         } catch (error) {
           console.error('Error enviando Telegram (confirmación) - reservations.ts:207', error);
+        }
+      }
+
+      if (reservation.email) {
+        try {
+          const services = await getServices();
+          const service = services.find((s) => s.id === reservation.service_id);
+          await sendEmail({
+            ...reservation,
+            service_name: service?.name || 'Servicio'
+          }, {
+            subject: 'Confirmación de reserva Barbería',
+            body: `Hola ${reservation.customer_name},
+
+Tu reserva ha sido confirmada exitosamente.
+
+- ID: ${reservation.id}
+- Servicio: ${service?.name || 'Servicio'}
+- Fecha y hora: ${formatAppointment(reservation.start_iso)}
+
+¡Gracias por confiar en nosotros!`
+          });
+        } catch (error) {
+          console.error('Error al enviar correo de confirmación:', error);
         }
       }
 
@@ -274,6 +326,30 @@ export default {
           await sendTelegramMessage(targetChat, `❌ Reserva cancelada por enlace\nID: ${reservation.id}\nCliente: ${reservation.customer_name}`);
         } catch (error) {
           console.error('Error enviando Telegram (cancelByToken) - reservations.ts', error);
+        }
+      }
+
+      if (reservation.email) {
+        try {
+          const services = await getServices();
+          const service = services.find((s) => s.id === reservation.service_id);
+          await sendEmail({
+            ...reservation,
+            service_name: service?.name || 'Servicio'
+          }, {
+            subject: 'Cancelación de reserva Barbería',
+            body: `Hola ${reservation.customer_name},
+
+Tu reserva ha sido cancelada correctamente.
+
+- ID: ${reservation.id}
+- Servicio: ${service?.name || 'Servicio'}
+- Fecha y hora: ${formatAppointment(reservation.start_iso)}
+
+Si deseas volver a reservar, puedes hacerlo desde nuestra página.`
+          });
+        } catch (error) {
+          console.error('Error al enviar correo de cancelación:', error);
         }
       }
 

@@ -1,28 +1,46 @@
 import path from 'path';
+import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
-import { JSONFile, Low } from 'lowdb';
+import { Low } from 'lowdb';
 const DB_PATH = path.resolve(process.cwd(), 'src', 'data.json');
+class WriteFileAdapter {
+    constructor(file) {
+        this.file = file;
+    }
+    async read() {
+        try {
+            const data = await fs.readFile(this.file, 'utf-8');
+            return JSON.parse(data);
+        }
+        catch {
+            return null;
+        }
+    }
+    async write(data) {
+        await fs.writeFile(this.file, JSON.stringify(data, null, 2), 'utf-8');
+    }
+}
 const defaultData = {
     services: [
-        { id: 1, name: 'Corte clásico', duration_minutes: 30 },
-        { id: 2, name: 'Corte + barba', duration_minutes: 45 },
-        { id: 3, name: 'Afeitado', duration_minutes: 20 }
+        { id: 'corte_clasico', name: 'Corte clásico', price: 12, duration_minutes: 30, description: 'Corte tradicional con acabado limpio.' },
+        { id: 'corte_clasico_degrade', name: 'Corte clásico degrade', price: 15, duration_minutes: 35, description: 'Corte clásico con efecto degrade moderno.' },
+        { id: 'corte_degradado_cejas', name: 'Corte degradado + cejas', price: 18, duration_minutes: 40, description: 'Corte degradado con perfilado de cejas incluido.' },
+        { id: 'vip_degradado_cejas_exfoliante', name: 'Servicio VIP', price: 25, duration_minutes: 50, description: 'Degradado + cejas + exfoliante facial premium.' },
+        { id: 'presidencial_completo', name: 'Servicio Presidencial completo', price: 30, duration_minutes: 60, description: 'Degradado + cejas + exfoliante + mascarilla negra + lavado de cabello + bebida de cortesía.' }
     ],
     reservations: []
 };
 let db = null;
 async function getDb() {
     if (!db) {
-        const adapter = new JSONFile(DB_PATH);
+        const adapter = new WriteFileAdapter(DB_PATH);
         db = new Low(adapter);
     }
     await db.read();
     if (!db.data) {
         db.data = { ...defaultData, services: [...defaultData.services], reservations: [] };
     }
-    if (!Array.isArray(db.data.services)) {
-        db.data.services = [...defaultData.services];
-    }
+    db.data.services = [...defaultData.services];
     if (!Array.isArray(db.data.reservations)) {
         db.data.reservations = [];
     }

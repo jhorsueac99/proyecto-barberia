@@ -3,98 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Reservas Barbería</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Barbershop - Reserva Rápida</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/jpeg" href="/assets/logo-barberia.jpg" />
+    <link rel="stylesheet" href="/style.css" />
   </head>
-  <body class="min-h-screen bg-slate-950 text-slate-50">
-    <main class="mx-auto max-w-6xl px-4 py-10">
-      <div class="mb-8 text-center">
-        <p class="mb-2 text-sm font-semibold uppercase tracking-[0.3em] text-amber-400">Agenda rápida</p>
-        <h1 class="text-4xl font-bold text-white sm:text-5xl">Reservas Barbería</h1>
+  <body>
+    <div class="overlay"></div>
+
+    <div class="form-container">
+      <img src="/assets/logo-barberia.jpg" alt="Logo Barbería" class="logo" />
+      <h2>Barbershop Reserva Rápida</h2>
+      <p class="sub">Agenda tu cita en minutos</p>
+      <form id="reservaForm">
+        <input type="text" id="nombre" placeholder="Nombre completo" required />
+        <input type="tel" id="telefono" placeholder="Teléfono" required />
+        <input type="email" id="correo" placeholder="Correo electrónico" required />
+        <select id="servicio" name="servicio" required>
+          <option value="">-- Selecciona un servicio --</option>
+        </select>
+        <input type="datetime-local" id="fechaHora" required />
+        <small>Lun–Sáb, 9:00 a.m. – 8:00 p.m. (hora Perú)</small>
+        <div id="status" class="status-msg"></div>
+        <button type="submit" class="btn-reserva">Crear reserva</button>
+      </form>
+    </div>
+
+    <div class="reservations-section">
+      <div class="reservations-header">
+        <div>
+          <h3>Reservas</h3>
+          <p class="sub">Consulta el estado de cada turno</p>
+        </div>
+        <div class="reservations-actions">
+          <button id="downloadCsvButton" type="button" class="btn-outline" style="display:none">Descargar CSV</button>
+          <button id="adminButton" type="button" class="btn-outline primary">Ingresar como administrador</button>
+        </div>
       </div>
-
-      <div class="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-        <section class="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/20 backdrop-blur sm:p-6">
-          <div class="mb-5">
-            <h2 class="text-2xl font-semibold text-white">Nueva reserva</h2>
-            <p class="mt-1 text-sm text-slate-300">Completa los datos para agendar un servicio.</p>
-          </div>
-
-          <form id="reservationForm" class="space-y-4">
-            <label class="block">
-              <span class="mb-2 block text-sm font-medium text-slate-200">Nombre</span>
-              <input
-                type="text"
-                id="customerName"
-                required
-                class="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-slate-50 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
-                placeholder="Ej. Carlos Rivera"
-              />
-            </label>
-
-            <label class="block">
-              <span class="mb-2 block text-sm font-medium text-slate-200">Teléfono</span>
-              <input
-                type="text"
-                id="phone"
-                class="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-slate-50 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
-                placeholder="987654321"
-              />
-            </label>
-
-            <label class="block">
-              <span class="mb-2 block text-sm font-medium text-slate-200">Servicio</span>
-              <select
-                id="serviceId"
-                required
-                class="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-slate-50 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
-              ></select>
-            </label>
-
-            <label class="block">
-              <span class="mb-2 block text-sm font-medium text-slate-200">Fecha y hora</span>
-              <input
-                type="datetime-local"
-                id="startIso"
-                required
-                class="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-slate-50 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
-              />
-              <small class="mt-2 block text-slate-400">Atendemos de lunes a sábado, de 9:00 a.m. a 8:00 p.m.</small>
-            </label>
-
-            <div id="status" class="hidden rounded-2xl px-4 py-3 text-sm font-medium"></div>
-
-            <button
-              type="submit"
-              class="w-full rounded-2xl bg-amber-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300"
-            >
-              Crear reserva
-            </button>
-          </form>
-        </section>
-
-        <section class="rounded-3xl border border-white/10 bg-slate-900/80 p-5 shadow-2xl shadow-black/20 sm:p-6">
-          <button id="adminButton" type="button" class="mb-4 rounded-xl border border-amber-400/40 px-3 py-2 text-sm font-medium text-amber-300">Abrir panel de administrador</button>
-          <div id="adminPanel" class="hidden">
-          <div class="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <h2 class="text-2xl font-semibold text-white">Reservas</h2>
-              <p class="mt-1 text-sm text-slate-300">Consulta el estado de cada turno.</p>
-            </div>
-            <button
-              id="downloadCsvButton"
-              type="button"
-              class="rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-100 transition hover:border-amber-400 hover:text-amber-300"
-            >
-              Descargar CSV
-            </button>
-          </div>
-
-          <div id="reservationsList" class="overflow-hidden rounded-2xl border border-white/10"></div>
-          </div>
-        </section>
+      <div class="reservations-table-wrap">
+        <div id="reservationsList"></div>
       </div>
-    </main>
+    </div>
+
+    <div id="loginModal" class="modal-overlay">
+      <form id="loginForm" class="modal-box">
+        <h3>Acceso administrador</h3>
+        <p class="sub">Ingresa tus credenciales para gestionar las reservas.</p>
+        <label>
+          <span>Usuario</span>
+          <input type="text" id="username" placeholder="admin" required />
+        </label>
+        <label>
+          <span>Contraseña</span>
+          <input type="password" id="password" placeholder="••••••••" required />
+        </label>
+        <div class="modal-actions">
+          <button type="button" id="loginCancel" class="btn-modal secondary">Cancelar</button>
+          <button type="submit" class="btn-modal primary">Ingresar</button>
+        </div>
+        <p id="loginError" class="error-msg"></p>
+      </form>
+    </div>
 
     <script src="/app.js"></script>
   </body>

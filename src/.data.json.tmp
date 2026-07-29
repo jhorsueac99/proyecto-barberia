@@ -2,38 +2,33 @@
   "services": [
     {
       "id": "corte_clasico",
-      "name": "Corte clásico",
+      "name": "Servicio corte clásico",
       "price": 12,
-      "duration_minutes": 30,
-      "description": "Corte tradicional con acabado limpio."
+      "duration_minutes": 30
     },
     {
       "id": "corte_clasico_degrade",
-      "name": "Corte clásico degrade",
+      "name": "Servicio corte clásico degrade",
       "price": 15,
-      "duration_minutes": 35,
-      "description": "Corte clásico con efecto degrade moderno."
+      "duration_minutes": 35
     },
     {
       "id": "corte_degradado_cejas",
-      "name": "Corte degradado + cejas",
+      "name": "Servicio corte degradado + cejas",
       "price": 18,
-      "duration_minutes": 40,
-      "description": "Corte degradado con perfilado de cejas incluido."
+      "duration_minutes": 40
     },
     {
       "id": "vip_degradado_cejas_exfoliante",
-      "name": "Servicio VIP",
-      "price": 25,
-      "duration_minutes": 50,
-      "description": "Degradado + cejas + exfoliante facial premium."
+      "name": "Servicio vip degradado + cejas + exfoliante",
+      "price": 20,
+      "duration_minutes": 50
     },
     {
       "id": "presidencial_completo",
-      "name": "Servicio Presidencial completo",
+      "name": "Servicio presidencial corte degradado + cejas + exfoliante + mascarilla negra + lavado de cabello + bebida de cortesía",
       "price": 30,
-      "duration_minutes": 60,
-      "description": "Degradado + cejas + exfoliante + mascarilla negra + lavado de cabello + bebida de cortesía."
+      "duration_minutes": 60
     }
   ],
   "reservations": [
@@ -683,55 +678,6 @@
       "cancel_token": "c300fa35-e617-4ab6-9b2b-a08af6e6db3e",
       "reminder_sent_at": null,
       "created_at": "2026-07-29T05:51:10.048Z"
-    },
-    {
-      "id": 48,
-      "service_id": "corte_clasico",
-      "service_name": "Corte clásico",
-      "service_price": 12,
-      "customer_name": "alexander",
-      "phone": "932868639",
-      "email": "jhorsueac99@gmail.com",
-      "start_iso": "2027-09-08T21:16:00.000Z",
-      "end_iso": "2027-09-08T21:46:00.000Z",
-      "status": "pending",
-      "chat_id": "6566101671",
-      "cancel_token": "dc278ca6-222a-48f1-9243-e4ed8af451b7",
-      "reminder_sent_at": null,
-      "created_at": "2026-07-29T06:05:34.814Z"
-    },
-    {
-      "id": 49,
-      "service_id": "corte_clasico",
-      "service_name": "Corte clásico",
-      "service_price": 12,
-      "customer_name": "alexander",
-      "phone": "932868639",
-      "email": "jhorsueac99@gmail.com",
-      "start_iso": "2026-07-29T15:15:00.000Z",
-      "end_iso": "2026-07-29T15:45:00.000Z",
-      "status": "confirmed",
-      "chat_id": "6566101671",
-      "cancel_token": "23a75a20-b130-4724-b8ec-7524961e7f45",
-      "reminder_sent_at": null,
-      "created_at": "2026-07-29T06:09:41.490Z"
-    },
-    {
-      "id": 50,
-      "service_id": "presidencial_completo",
-      "service_name": "Servicio Presidencial completo",
-      "service_price": 30,
-      "service_description": "Degradado + cejas + exfoliante + mascarilla negra + lavado de cabello + bebida de cortesía.",
-      "customer_name": "alexander",
-      "phone": "932868639",
-      "email": "jhorsueac99@gmail.com",
-      "start_iso": "2026-07-29T14:09:00.000Z",
-      "end_iso": "2026-07-29T15:09:00.000Z",
-      "status": "pending",
-      "chat_id": "6566101671",
-      "cancel_token": "f1eefc9d-45af-45d7-ad70-886def5d5a65",
-      "reminder_sent_at": null,
-      "created_at": "2026-07-29T06:12:32.409Z"
     }
   ]
 }
