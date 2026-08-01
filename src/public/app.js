@@ -158,4 +158,5 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById('fechaHora').min = new Date().toISOString().slice(0, 16);
   loadServices();
   loadReservations().catch(() => {});
+  setInterval(() => { loadReservations().catch(() => {}); }, 5000);
 });
