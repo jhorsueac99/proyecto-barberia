@@ -3,17 +3,7 @@ import nodemailer from 'nodemailer';
 
 let transporter;
 
-if (process.env.MAIL_PROVIDER === 'gmail') {
-  transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_PASS
-    }
-  });
-} else if (process.env.MAIL_PROVIDER === 'mailgun') {
+if (process.env.MAIL_PROVIDER === 'mailgun') {
   transporter = nodemailer.createTransport({
     host: 'smtp.mailgun.org',
     port: 587,
@@ -28,9 +18,7 @@ if (process.env.MAIL_PROVIDER === 'gmail') {
 
 export async function sendReservationMail(reserva) {
   await transporter.sendMail({
-    from: process.env.MAIL_PROVIDER === 'gmail'
-      ? process.env.GMAIL_USER
-      : process.env.MAILGUN_USER,
+    from: process.env.MAILGUN_USER,
     to: reserva.email,
     subject: 'Confirmación de Reserva Barbería',
     text: `Hola ${reserva.nombre}, tu reserva para ${reserva.servicio} el día ${reserva.fecha} ha sido registrada exitosamente.`
