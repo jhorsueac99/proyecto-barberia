@@ -1,16 +1,24 @@
 import nodemailer from 'nodemailer';
 import { formatAppointment } from './schedule.js';
 
-console.log('EMAIL_USER defined:', !!process.env.EMAIL_USER);
-console.log('EMAIL_PASS defined:', !!process.env.EMAIL_PASS);
-
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.mailgun.org',
+  port: 587,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+    user: process.env.MAILGUN_USER,
+    pass: process.env.MAILGUN_API_KEY
   }
 });
+
+transporter.verify((error) => {
+  if (error) {
+    console.error('❌ Error Mailgun:', error);
+  } else {
+    console.log('✅ Servidor Mailgun listo para enviar correos');
+  }
+});
+
+const MAILGUN_FROM = process.env.MAILGUN_USER || 'postmaster@TU_DOMINIO.mailgun.org';
 
 interface ReservationEmailData {
   customerName: string;
@@ -21,7 +29,7 @@ interface ReservationEmailData {
 }
 
 export async function sendEmail(reservation: any, options?: { subject?: string; body?: string }) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  if (!process.env.MAILGUN_API_KEY) {
     console.log('Email not configured.');
     return;
   }
@@ -53,19 +61,19 @@ export async function sendEmail(reservation: any, options?: { subject?: string; 
 
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: MAILGUN_FROM,
       to: reservation.email,
       subject,
       html: htmlBody
     });
-    console.log(`Correo enviado a ${reservation.email}`);
+    console.log(`✅ Correo enviado a ${reservation.email}`);
   } catch (error) {
-    console.error('Error al enviar correo:', error);
+    console.error('❌ Error enviando correo:', error);
   }
 }
 
 export async function sendReservationEmail(to: string, data: ReservationEmailData) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  if (!process.env.MAILGUN_API_KEY) {
     console.log('Email not configured.');
     return;
   }
@@ -86,13 +94,13 @@ export async function sendReservationEmail(to: string, data: ReservationEmailDat
 
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: MAILGUN_FROM,
       to,
       subject: 'Confirmación de reserva Barbería',
       html: htmlBody
     });
-    console.log(`Correo enviado a ${to}`);
+    console.log(`✅ Correo enviado a ${to}`);
   } catch (error) {
-    console.error('Error al enviar correo:', error);
+    console.error('❌ Error enviando correo:', error);
   }
 }

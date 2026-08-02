@@ -12,6 +12,14 @@ import {
 import { formatAppointment, isBusinessHours } from '../services/schedule.js';
 import { sendTelegramMessage } from '../services/telegramService.js';
 import { sendReservationEmail, sendEmail } from '../services/notifications.js';
+export async function crearReserva(req, res) {
+  const reserva = await addReservation(req.body); // guardas la reserva en DB
+
+  // Aquí llamas al mailer para enviar el correo
+  await sendReservationMail(reserva);
+
+  res.status(201).json({ message: "Reserva creada y correo enviado", reserva });
+}
 
 function addMinutes(iso: string, minutes: number) {
   const date = new Date(iso);

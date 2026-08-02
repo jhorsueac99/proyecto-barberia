@@ -53,8 +53,8 @@ Incluye gestión de reservas, panel de administración y envío de correos de co
 ## 🔑 Variables de entorno
 Este proyecto requiere un archivo `.env` con las siguientes variables:
 ```
-EMAIL_USER=tu_correo
-EMAIL_PASS=tu_password_o_token
+MAILGUN_USER=postmaster@TU_DOMINIO.mailgun.org
+MAILGUN_API_KEY=tu_api_key_generada_en_mailgun
 ```
 **⚠️ Importante:** El archivo `.env` está en `.gitignore` y no debe subirse a GitHub por seguridad.
 

@@ -5,8 +5,8 @@ import reservations from './controllers/reservations.js';
 import { initDb } from './services/db.js';
 import { startReminderScheduler } from './services/reminderService.js';
 
-if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-  console.error('Faltan credenciales de correo en .env');
+if (!process.env.MAILGUN_API_KEY) {
+  console.error('Faltan credenciales de correo en .env (MAILGUN_API_KEY)');
 }
 
 const app = express();

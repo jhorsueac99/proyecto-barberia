@@ -732,6 +732,23 @@
       "cancel_token": "f1eefc9d-45af-45d7-ad70-886def5d5a65",
       "reminder_sent_at": null,
       "created_at": "2026-07-29T06:12:32.409Z"
+    },
+    {
+      "id": 51,
+      "service_id": "vip_degradado_cejas_exfoliante",
+      "service_name": "Servicio VIP",
+      "service_price": 25,
+      "service_description": "Degradado + cejas + exfoliante facial premium.",
+      "customer_name": "alexander",
+      "phone": "932868639",
+      "email": "jhorsueac99@gmail.com",
+      "start_iso": "2028-01-03T18:13:00.000Z",
+      "end_iso": "2028-01-03T19:03:00.000Z",
+      "status": "pending",
+      "chat_id": "6566101671",
+      "cancel_token": "853834ba-9423-47cd-b1b3-c46ef3d48942",
+      "reminder_sent_at": null,
+      "created_at": "2026-08-02T02:29:51.113Z"
     }
   ]
 }
