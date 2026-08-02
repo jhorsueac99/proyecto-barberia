@@ -5,7 +5,8 @@ jest.unstable_mockModule('../services/telegramService.js', () => ({
 }));
 
 jest.unstable_mockModule('../services/notifications.js', () => ({
-  sendEmail: jest.fn()
+  sendEmail: jest.fn(),
+  sendReservationMail: jest.fn()
 }));
 
 jest.unstable_mockModule('../services/db.js', () => ({
@@ -32,7 +33,14 @@ const mockResponse = () => {
 };
 
 describe('Reservations - create', () => {
-  const futureDate = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  const futureDate = (() => {
+    const peru = new Date(Date.now() - 5 * 60 * 60 * 1000);
+    do {
+      peru.setDate(peru.getDate() + 1);
+    } while (peru.getUTCDay() === 0);
+    peru.setHours(12, 0, 0, 0);
+    return new Date(peru.getTime() + 5 * 60 * 60 * 1000).toISOString();
+  })();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -63,7 +71,7 @@ describe('Reservations - create', () => {
     jest.mocked(notifications.sendEmail).mockResolvedValue(undefined);
 
     const req = mockRequest({
-      serviceId: 1,
+      serviceId: 'corte_clasico',
       customerName: 'Alexander',
       phone: '999888777',
       startIso: futureDate,
@@ -85,7 +93,7 @@ describe('Reservations - create', () => {
     jest.mocked(notifications.sendEmail).mockResolvedValue(undefined);
 
     const req = mockRequest({
-      serviceId: 1,
+      serviceId: 'corte_clasico',
       customerName: 'Alexander',
       phone: '999888777',
       startIso: futureDate,
@@ -105,7 +113,7 @@ describe('Reservations - create', () => {
     jest.mocked(notifications.sendEmail).mockResolvedValue(undefined);
 
     const req = mockRequest({
-      serviceId: 1,
+      serviceId: 'corte_clasico',
       customerName: 'Alexander',
       phone: '999888777',
       startIso: futureDate,
@@ -122,7 +130,7 @@ describe('Reservations - create', () => {
     jest.mocked(telegramService.sendTelegramMessage).mockResolvedValue(undefined);
 
     const req = mockRequest({
-      serviceId: 1,
+      serviceId: 'corte_clasico',
       customerName: 'Alexander',
       phone: '999888777',
       startIso: futureDate,

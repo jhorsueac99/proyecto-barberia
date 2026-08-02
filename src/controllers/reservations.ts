@@ -11,14 +11,21 @@ import {
 } from '../services/db.js';
 import { formatAppointment, isBusinessHours } from '../services/schedule.js';
 import { sendTelegramMessage } from '../services/telegramService.js';
-import { sendReservationEmail, sendEmail } from '../services/notifications.js';
-export async function crearReserva(req, res) {
-  const reserva = await addReservation(req.body); // guardas la reserva en DB
+import { sendReservationMail, sendEmail } from '../services/notifications.js';
+export async function crearReserva(req: Request, res: Response) {
+  const reserva = await addReservation(req.body);
 
-  // Aquí llamas al mailer para enviar el correo
-  await sendReservationMail(reserva);
+  if (reserva.email) {
+    await sendReservationMail(reserva.email, {
+      customerName: reserva.customer_name,
+      reservationId: reserva.id,
+      serviceName: reserva.service_name,
+      startTime: reserva.start_iso,
+      cancelUrl: `${process.env.BASE_URL || 'http://localhost:3000'}/cancel/${reserva.cancel_token}`
+    });
+  }
 
-  res.status(201).json({ message: "Reserva creada y correo enviado", reserva });
+  res.status(201).json({ message: 'Reserva creada y correo enviado', reserva });
 }
 
 function addMinutes(iso: string, minutes: number) {

@@ -2,7 +2,20 @@ import { randomUUID } from 'crypto';
 import { addReservation, findOverlaps, getAllReservations, getReservationById, getReservationByCancelToken, getServices, updateReservationStatus } from '../services/db.js';
 import { formatAppointment, isBusinessHours } from '../services/schedule.js';
 import { sendTelegramMessage } from '../services/telegramService.js';
-import { sendEmail } from '../services/notifications.js';
+import { sendReservationMail, sendEmail } from '../services/notifications.js';
+export async function crearReserva(req, res) {
+    const reserva = await addReservation(req.body);
+    if (reserva.email) {
+        await sendReservationMail(reserva.email, {
+            customerName: reserva.customer_name,
+            reservationId: reserva.id,
+            serviceName: reserva.service_name,
+            startTime: reserva.start_iso,
+            cancelUrl: `${process.env.BASE_URL || 'http://localhost:3000'}/cancel/${reserva.cancel_token}`
+        });
+    }
+    res.status(201).json({ message: 'Reserva creada y correo enviado', reserva });
+}
 function addMinutes(iso, minutes) {
     const date = new Date(iso);
     date.setMinutes(date.getMinutes() + minutes);

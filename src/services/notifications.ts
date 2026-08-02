@@ -72,7 +72,7 @@ export async function sendEmail(reservation: any, options?: { subject?: string; 
   }
 }
 
-export async function sendReservationEmail(to: string, data: ReservationEmailData) {
+export async function sendReservationMail(to: string, data: ReservationEmailData) {
   if (!process.env.MAILGUN_API_KEY) {
     console.log('Email not configured.');
     return;

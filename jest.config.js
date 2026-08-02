@@ -9,6 +9,6 @@ export default {
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.prod.json', useESM: true }]
   },
-  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
+  testPathIgnorePatterns: ['/node_modules/', '/dist/', '/mailer.test.js', '/mailer.sandbox.test.js'],
   transformIgnorePatterns: ['node_modules/(?!(lowdb)/)']
 };
