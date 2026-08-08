@@ -3,9 +3,9 @@ import { addReservation, findHourBlocked, getAllReservations, getReservationById
 import { confirmReservation, cancelReservation } from '../services/reservationService.js';
 import { scheduleReminder } from '../services/reminderService.js';
 import { formatAppointment, isBusinessHours } from '../services/schedule.js';
-import { sendTelegramMessage } from '../services/telegramService.js';
 import { sendWhatsAppMessage } from '../services/whatsappService.js';
 import { isTwilioEnabled, sendTemplateMessage } from '../services/twilioService.js';
+import { notifyReservationCancelled, notifyReservationConfirmed, notifyReservationCreated } from '../reservations/notify.js';
 export async function crearReserva(req, res) {
     const reserva = await addReservation(req.body);
     res.status(201).json({ message: 'Reserva creada', reserva });
@@ -179,14 +179,11 @@ export default {
             });
             const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
             const cancelUrl = `${baseUrl}/cancel/${reservation.cancel_token}`;
-            const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
-            if (targetChat) {
-                try {
-                    await sendTelegramMessage(String(targetChat), `📅 Nueva reserva\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nTeléfono: ${reservation.phone}\nServicio: ${service.name}\nInicio: ${formatAppointment(reservation.start_iso)}\nCancelar: ${cancelUrl}`);
-                }
-                catch (error) {
-                    console.error('Error enviando Telegram - reservations.ts:144', error);
-                }
+            try {
+                await notifyReservationCreated(reservation, cancelUrl);
+            }
+            catch (error) {
+                console.error('Error enviando notificaciones (creación) - reservations.ts', error);
             }
             try {
                 await sendWhatsAppMessage(reservation.phone, `Hola ${reservation.customer_name}, tu reserva de ${service.name} para el ${formatAppointment(reservation.start_iso)} fue registrada exitosamente. ID: ${reservation.id}`);
@@ -233,14 +230,11 @@ export default {
             const cancelMessage = late
                 ? '⚠️ La cita fue cancelada muy cerca de la hora programada. La franja se ha liberado para otro cliente.'
                 : '❌ La cita ha sido cancelada. La franja se ha liberado.';
-            const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
-            if (targetChat) {
-                try {
-                    await sendTelegramMessage(String(targetChat), `${cancelMessage}\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nServicio: ${reservation.service_name}\nInicio: ${formatAppointment(reservation.start_iso)}`);
-                }
-                catch (error) {
-                    console.error('Error enviando Telegram (cancelación) - reservations.ts:174', error);
-                }
+            try {
+                await notifyReservationCancelled(reservation);
+            }
+            catch (error) {
+                console.error('Error enviando notificaciones (cancelación) - reservations.ts', error);
             }
             try {
                 await sendWhatsAppMessage(reservation.phone, cancelMessage);
@@ -286,14 +280,13 @@ export default {
             catch (error) {
                 return res.status(409).json({ error: error.message });
             }
-            const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
-            if (targetChat) {
-                try {
-                    await sendTelegramMessage(String(targetChat), `✅ Reserva confirmada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${formatAppointment(reservation.start_iso)}`);
-                }
-                catch (error) {
-                    console.error('Error enviando Telegram (confirmación) - reservations.ts:207', error);
-                }
+            const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+            const cancelUrl = `${baseUrl}/cancel/${reservation.cancel_token}`;
+            try {
+                await notifyReservationConfirmed(reservation, cancelUrl);
+            }
+            catch (error) {
+                console.error('Error enviando notificaciones (confirmación) - reservations.ts', error);
             }
             try {
                 await sendWhatsAppMessage(reservation.phone, `Hola ${reservation.customer_name}, tu reserva (ID ${reservation.id}) ha sido CONFIRMADA. Te esperamos el ${formatAppointment(reservation.start_iso)}.`);
@@ -364,14 +357,11 @@ export default {
             const cancelMessage = late
                 ? '⚠️ La cita fue cancelada muy cerca de la hora programada. La franja se ha liberado para otro cliente.'
                 : '❌ La cita ha sido cancelada. La franja se ha liberado.';
-            const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
-            if (targetChat) {
-                try {
-                    await sendTelegramMessage(targetChat, `${cancelMessage}\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nServicio: ${reservation.service_name}`);
-                }
-                catch (error) {
-                    console.error('Error enviando Telegram (cancelByToken) - reservations.ts', error);
-                }
+            try {
+                await notifyReservationCancelled(reservation);
+            }
+            catch (error) {
+                console.error('Error enviando notificaciones (cancelByToken) - reservations.ts', error);
             }
             try {
                 await sendWhatsAppMessage(reservation.phone, cancelMessage);

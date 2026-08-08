@@ -197,10 +197,14 @@ El sistema incluye un bot interactivo de Telegram que responde los siguientes co
 - **Al enviar `/start`, el sistema guarda automáticamente su `telegram_id`** y lo asocia a sus reservas por username si existe.
 - El formulario incluye un campo opcional de Telegram (`@usuario`), validado con `@` y caracteres válidos.
 - **El administrador puede abrir chat directo si el cliente registró su username** (`https://t.me/<username>`, sin el `@`). Aunque no haya username, el bot puede enviar notificaciones porque ya tiene el `telegram_id`.
+- **El cliente recibe mensajes de creación, confirmación y cancelación de su cita** en su Telegram (usando su `telegram_id`).
+- **Cada mensaje incluye el enlace de cancelación si aplica** (creación y confirmación).
+- **El administrador recibe notificaciones internas separadas** con los mismos datos de la reserva (usando `ADMIN_ID`/`TELEGRAM_CHAT_ID`).
 
 Las variables relacionadas:
 - `TELEGRAM_BOT_USERNAME=@Charapita_bot` → username del bot mostrado en el formulario.
 - `TELEGRAM_BOT_TOKEN=xxxxxxxxxxxxxxxxxxxx` → token del bot.
+- `ADMIN_ID` (o `TELEGRAM_CHAT_ID`) → chat de Telegram del administrador para las notificaciones internas.
 
 ---
 
