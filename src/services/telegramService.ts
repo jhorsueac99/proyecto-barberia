@@ -1,5 +1,6 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { formatAppointment } from './schedule.js';
 
 dotenv.config();
 
@@ -22,4 +23,11 @@ export async function sendTelegramMessage(chatId = DEFAULT_CHAT_ID || '', text: 
   } catch (error) {
     console.error('Telegram send error', error);
   }
+}
+
+export async function sendReminder(reservation: any) {
+  await sendTelegramMessage(
+    reservation.chat_id || DEFAULT_CHAT_ID || '',
+    `⏰ Recordatorio: Tu cita de ${reservation.service_name} es a las ${formatAppointment(reservation.start_iso)}.`
+  );
 }

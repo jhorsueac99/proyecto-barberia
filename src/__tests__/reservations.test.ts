@@ -1,7 +1,8 @@
 import { jest } from '@jest/globals';
 
 jest.unstable_mockModule('../services/telegramService.js', () => ({
-  sendTelegramMessage: jest.fn()
+  sendTelegramMessage: jest.fn(),
+  sendReminder: jest.fn()
 }));
 
 jest.unstable_mockModule('../services/notifications.js', () => ({
@@ -11,18 +12,20 @@ jest.unstable_mockModule('../services/notifications.js', () => ({
 
 jest.unstable_mockModule('../services/db.js', () => ({
   getServices: jest.fn(),
+  findHourBlocked: jest.fn(),
   findOverlaps: jest.fn(),
   addReservation: jest.fn(),
   getAllReservations: jest.fn(),
   getReservationById: jest.fn(),
   getReservationByCancelToken: jest.fn(),
-  updateReservationStatus: jest.fn()
+  updateReservationStatus: jest.fn(),
+  cancelReservationWithFlag: jest.fn(),
+  markReminderSent: jest.fn()
 }));
 
 const { default: reservations } = await import('../controllers/reservations.js');
 const db = await import('../services/db.js');
 const telegramService = await import('../services/telegramService.js');
-const notifications = await import('../services/notifications.js');
 
 const mockRequest = (body: any = {}) => ({ body }) as any;
 const mockResponse = () => {
@@ -47,7 +50,7 @@ describe('Reservations - create', () => {
     jest.mocked(db.getServices).mockResolvedValue([
       { id: 'corte_clasico', name: 'Servicio corte clásico', price: 12, duration_minutes: 30 }
     ]);
-    jest.mocked(db.findOverlaps).mockResolvedValue([]);
+    jest.mocked(db.findHourBlocked).mockResolvedValue([]);
     jest.mocked(db.addReservation).mockResolvedValue({
       id: 1,
       service_id: 'corte_clasico',
@@ -55,7 +58,6 @@ describe('Reservations - create', () => {
       service_price: 12,
       customer_name: 'Alexander',
       phone: '999888777',
-      email: 'alex@test.com',
       start_iso: futureDate,
       end_iso: futureDate,
       status: 'pending',
@@ -68,14 +70,13 @@ describe('Reservations - create', () => {
 
   it('debería llamar a sendTelegramMessage con los datos correctos', async () => {
     jest.mocked(telegramService.sendTelegramMessage).mockResolvedValue(undefined);
-    jest.mocked(notifications.sendEmail).mockResolvedValue(undefined);
 
     const req = mockRequest({
       serviceId: 'corte_clasico',
       customerName: 'Alexander',
       phone: '999888777',
       startIso: futureDate,
-      email: 'alex@test.com'
+      telegramId: '123456789'
     });
     const res = mockResponse();
 
@@ -88,58 +89,18 @@ describe('Reservations - create', () => {
     );
   });
 
-  it('debería llamar a sendEmail con el email del cliente', async () => {
-    jest.mocked(telegramService.sendTelegramMessage).mockResolvedValue(undefined);
-    jest.mocked(notifications.sendEmail).mockResolvedValue(undefined);
-
-    const req = mockRequest({
-      serviceId: 'corte_clasico',
-      customerName: 'Alexander',
-      phone: '999888777',
-      startIso: futureDate,
-      email: 'alex@test.com'
-    });
-    const res = mockResponse();
-
-    await reservations.create(req, res);
-
-    expect(notifications.sendEmail).toHaveBeenCalledTimes(1);
-    expect(notifications.sendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'alex@test.com' })
-    );
-  });
-
   it('debería fallar si sendTelegramMessage no se ejecuta', async () => {
-    jest.mocked(notifications.sendEmail).mockResolvedValue(undefined);
-
     const req = mockRequest({
       serviceId: 'corte_clasico',
       customerName: 'Alexander',
       phone: '999888777',
       startIso: futureDate,
-      email: 'alex@test.com'
+      telegramId: '123456789'
     });
     const res = mockResponse();
 
     await reservations.create(req, res);
 
     expect(telegramService.sendTelegramMessage).toHaveBeenCalled();
-  });
-
-  it('debería fallar si sendEmail no se ejecuta', async () => {
-    jest.mocked(telegramService.sendTelegramMessage).mockResolvedValue(undefined);
-
-    const req = mockRequest({
-      serviceId: 'corte_clasico',
-      customerName: 'Alexander',
-      phone: '999888777',
-      startIso: futureDate,
-      email: 'alex@test.com'
-    });
-    const res = mockResponse();
-
-    await reservations.create(req, res);
-
-    expect(notifications.sendEmail).toHaveBeenCalled();
   });
 });

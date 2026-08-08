@@ -1,0 +1,2 @@
+export const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME;
+export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;

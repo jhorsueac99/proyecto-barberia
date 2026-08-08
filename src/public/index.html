@@ -18,14 +18,31 @@
       <h2>Barbershop Reserva Rápida</h2>
       <p class="sub">Agenda tu cita en minutos</p>
       <form id="reservaForm">
-        <input type="text" id="nombre" placeholder="Nombre completo" required />
-        <input type="tel" id="telefono" placeholder="Teléfono" required />
-        <input type="email" id="correo" placeholder="Correo electrónico" required />
+        <div class="field">
+          <input type="text" id="nombre" placeholder="Nombre completo" required onInput="validateName()" onBlur="validateName()" />
+          <span id="nombre-icon" class="field-icon"></span>
+        </div>
+        <div class="field">
+          <input type="tel" id="telefono" placeholder="Teléfono (9 dígitos, ej. 987654321)" required onInput="validatePhone()" onBlur="validatePhone()" />
+          <span id="telefono-icon" class="field-icon"></span>
+        </div>
+        <div class="field">
+          <input type="text" id="telegramUsername" placeholder="Telegram (opcional, ej. @usuario)" autocomplete="off" onInput="validateTelegram()" onBlur="validateTelegram()" />
+          <span id="telegramUsername-icon" class="field-icon"></span>
+        </div>
+        <small>Inicia <a href="https://t.me/Charapita_bot" id="telegramBotLink" target="_blank" rel="noopener">el bot de Telegram</a>. Cuando se abra el bot, escribe <strong>/start</strong> para vincular tu cuenta automáticamente.</small>
         <select id="servicio" name="servicio" required>
           <option value="">-- Selecciona un servicio --</option>
         </select>
         <input type="datetime-local" id="fechaHora" required />
         <small>Lun–Sáb, 9:00 a.m. – 8:00 p.m. (hora Perú)</small>
+        <div id="shortNoticePolicy" style="display:none">
+          <p class="warning-msg short-notice-alert">⚠️ Aviso: Las citas reservadas con menos de 2 horas de anticipación no pueden cancelarse sin penalización.</p>
+          <label class="checkbox-label">
+            <input type="checkbox" id="shortNoticeAccepted" />
+            <span>Acepto la política de aviso corto.</span>
+          </label>
+        </div>
         <div id="status" class="status-msg"></div>
         <button type="submit" class="btn-reserva">Crear reserva</button>
       </form>

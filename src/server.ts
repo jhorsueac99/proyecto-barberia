@@ -4,6 +4,8 @@ import path from 'path';
 import reservations from './controllers/reservations.js';
 import { initDb } from './services/db.js';
 import { startReminderScheduler } from './services/reminderService.js';
+import { startTelegramBot } from './bot/telegramBot.js';
+import { TELEGRAM_BOT_USERNAME } from './config/telegram.js';
 
 if (!process.env.MAILGUN_API_KEY) {
   console.error('Faltan credenciales de correo en .env (MAILGUN_API_KEY)');
@@ -20,6 +22,10 @@ app.get('/api/ping', (_req, res) => {
   res.json({ ok: true, message: 'pong' });
 });
 
+app.get('/api/telegram/config', (_req, res) => {
+  res.json({ username: TELEGRAM_BOT_USERNAME || 'Charapita_bot' });
+});
+
 reservations.registerRoutes(app);
 
 app.post('/api/admin/login', (req, res) => {
@@ -34,6 +40,7 @@ app.post('/api/admin/login', (req, res) => {
 (async () => {
   await initDb();
   startReminderScheduler();
+  startTelegramBot();
   app.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT} - server.ts:25`);
   });

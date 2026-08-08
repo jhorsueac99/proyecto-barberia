@@ -1,8 +1,47 @@
 import { getAllReservations, getServices, markReminderSent } from './db.js';
 import { formatAppointment } from './schedule.js';
-import { sendTelegramMessage } from './telegramService.js';
+import { sendTelegramMessage, sendReminder as sendReminderTelegram } from './telegramService.js';
+import { sendReminder as sendReminderWhatsApp } from './whatsappService.js';
 
 const REMINDER_INTERVAL_MS = 15 * 60 * 1000;
+const SIXTY_MINUTES = 60 * 60 * 1000;
+const THIRTY_MINUTES = 30 * 60 * 1000;
+const TEN_MINUTES = 10 * 60 * 1000;
+
+export async function sendReminder(reservation: any) {
+  const [whatsapp, telegram] = await Promise.allSettled([
+    sendReminderWhatsApp(reservation),
+    sendReminderTelegram(reservation)
+  ]);
+
+  if (whatsapp.status === 'rejected') console.error('Error recordatorio WhatsApp - reminderService.ts', whatsapp.reason);
+  if (telegram.status === 'rejected') console.error('Error recordatorio Telegram - reminderService.ts', telegram.reason);
+}
+
+export function scheduleReminder(reservation: any) {
+  const diffMs = new Date(reservation.start_iso).getTime() - Date.now();
+
+  if (diffMs <= 0) return;
+
+  const schedule = (delayMs: number) => {
+    const timer = setTimeout(() => {
+      void sendReminder(reservation).catch((error) => console.error('Error enviando recordatorio - reminderService.ts', error));
+    }, delayMs);
+    timer.unref();
+  };
+
+  if (diffMs >= SIXTY_MINUTES) {
+    schedule(diffMs - SIXTY_MINUTES);
+    return;
+  }
+
+  if (diffMs > TEN_MINUTES) {
+    schedule(Math.max(diffMs - THIRTY_MINUTES, 0));
+    return;
+  }
+
+  void sendReminder(reservation).catch((error) => console.error('Error enviando recordatorio inmediato - reminderService.ts', error));
+}
 
 export async function sendPendingReminders() {
   const [reservations, services] = await Promise.all([getAllReservations(), getServices()]);

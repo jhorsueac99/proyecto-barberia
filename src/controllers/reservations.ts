@@ -2,36 +2,44 @@ import { Express, NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import {
   addReservation,
-  findOverlaps,
+  findHourBlocked,
   getAllReservations,
   getReservationById,
   getReservationByCancelToken,
-  getServices,
-  updateReservationStatus
+  getServices
 } from '../services/db.js';
+import { confirmReservation, cancelReservation } from '../services/reservationService.js';
+import { scheduleReminder } from '../services/reminderService.js';
 import { formatAppointment, isBusinessHours } from '../services/schedule.js';
 import { sendTelegramMessage } from '../services/telegramService.js';
-import { sendReservationMail, sendEmail } from '../services/notifications.js';
+import { sendWhatsAppMessage } from '../services/whatsappService.js';
+import { isTwilioEnabled, sendTemplateMessage } from '../services/twilioService.js';
 export async function crearReserva(req: Request, res: Response) {
   const reserva = await addReservation(req.body);
 
-  if (reserva.email) {
-    await sendReservationMail(reserva.email, {
-      customerName: reserva.customer_name,
-      reservationId: reserva.id,
-      serviceName: reserva.service_name,
-      startTime: reserva.start_iso,
-      cancelUrl: `${process.env.BASE_URL || 'http://localhost:3000'}/cancel/${reserva.cancel_token}`
-    });
-  }
-
-  res.status(201).json({ message: 'Reserva creada y correo enviado', reserva });
+  res.status(201).json({ message: 'Reserva creada', reserva });
 }
 
 function addMinutes(iso: string, minutes: number) {
   const date = new Date(iso);
   date.setMinutes(date.getMinutes() + minutes);
   return date.toISOString();
+}
+
+function nextBusinessSlot(startIso: string, durationMinutes: number) {
+  const candidate = new Date(startIso);
+  candidate.setMinutes(0, 0, 0);
+  candidate.setHours(candidate.getHours() + 1);
+
+  for (let i = 0; i < 7 * 24; i++) {
+    const end = new Date(candidate.getTime() + durationMinutes * 60 * 1000);
+    if (isBusinessHours(candidate.toISOString(), end.toISOString())) {
+      return candidate.toISOString();
+    }
+    candidate.setHours(candidate.getHours() + 1);
+  }
+
+  return new Date(startIso).toISOString();
 }
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
@@ -60,7 +68,7 @@ function escapeHtml(value: string) {
 export default {
   registerRoutes(app: Express) {
     app.get('/api/services', this.services.bind(this));
-    app.get('/api/reservations', requireAdmin, this.list.bind(this));
+    app.get('/api/reservations', this.list.bind(this));
     app.get('/api/reservations/export', requireAdmin, this.exportCsv.bind(this));
     app.post('/api/reservations', this.create.bind(this));
     app.delete('/api/reservations/:id', requireAdmin, this.remove.bind(this));
@@ -76,9 +84,41 @@ export default {
     return res.json(services);
   },
 
-  async list(_req: Request, res: Response) {
-    const [reservations, services] = await Promise.all([getAllReservations(), getServices()]);
-    return res.json({ reservations: reservations.map((reservation) => withServiceName(reservation, services)) });
+  async list(req: Request, res: Response) {
+    const adminPin = process.env.ADMIN_PIN;
+    const hasAdminPin = adminPin ? req.header('x-admin-pin') === adminPin : false;
+    const telegramId = String(req.header('x-telegram-id') || req.query.telegramId || '');
+    const telegramUsername = String(req.header('x-telegram-username') || req.query.telegramUsername || '');
+
+    if (adminPin && !hasAdminPin && !telegramId && !telegramUsername) {
+      return res.status(401).json({ error: 'No autorizado. Proporciona el PIN de administrador o tu Telegram.' });
+    }
+
+    const [allReservations, services] = await Promise.all([getAllReservations(), getServices()]);
+
+    if (hasAdminPin || (!adminPin && !telegramId && !telegramUsername)) {
+      return res.json({ reservations: allReservations.map((reservation) => withServiceName(reservation, services)) });
+    }
+
+    let ownReservations;
+    if (telegramUsername) {
+      if (!/^@[A-Za-z0-9_]{4,}$/.test(telegramUsername)) {
+        return res.status(401).json({ error: 'Username de Telegram inválido.' });
+      }
+      const normalized = telegramUsername.replace(/^@/, '').toLowerCase();
+      ownReservations = allReservations.filter((reservation) => (reservation.telegram_username || '').replace(/^@/, '').toLowerCase() === normalized);
+    } else {
+      if (!/^\d{5,}$/.test(telegramId)) {
+        return res.status(401).json({ error: 'ID de Telegram inválido.' });
+      }
+      ownReservations = allReservations.filter((reservation) => reservation.telegram_id === telegramId || reservation.chat_id === telegramId);
+    }
+
+    const sanitized = ownReservations.map((reservation) => {
+      const { phone: _phone, telegram_id: _telegramId, chat_id: _chatId, ...rest } = reservation;
+      return withServiceName(rest, services);
+    });
+    return res.json({ reservations: sanitized });
   },
 
   async exportCsv(_req: Request, res: Response) {
@@ -103,10 +143,12 @@ export default {
   },
 
   async create(req: Request, res: Response) {
+    console.log('Controlador ejecutado: crear');
     try {
-      const { serviceId, customerName, phone = '', startIso, email = '' } = req.body;
+      const { serviceId, customerName, phone = '', startIso, barberiaId = 'barberiaA', telegramUsername = '', shortNoticeAccepted = false } = req.body;
       const name = String(customerName || '').trim();
       const cleanPhone = String(phone || '').trim();
+      const cleanUsername = String(telegramUsername || '').trim();
       const parsedStart = new Date(startIso);
 
       if (!serviceId || !name || !startIso) {
@@ -121,9 +163,15 @@ export default {
         return res.status(400).json({ error: 'El teléfono debe ser numérico y tener al menos 9 dígitos.' });
       }
 
+      if (cleanUsername && !/^@[A-Za-z0-9_]{4,}$/.test(cleanUsername)) {
+        return res.status(400).json({ error: 'El username de Telegram debe comenzar con @ y contener caracteres válidos (ej. @usuario).' });
+      }
+
       if (Number.isNaN(parsedStart.getTime()) || parsedStart <= new Date()) {
         return res.status(400).json({ error: 'La fecha debe ser futura y válida.' });
       }
+
+      const shortNoticeWarning = 'Las citas reservadas con menos de 2 horas de anticipación no pueden cancelarse sin penalización.';
 
       const services = await getServices();
       const service = services.find((item) => item.id === serviceId);
@@ -131,13 +179,24 @@ export default {
         return res.status(404).json({ error: 'Servicio no encontrado' });
       }
 
-      const endIso = addMinutes(startIso, service.duration_minutes);
-      if (!isBusinessHours(startIso, endIso)) {
-        return res.status(400).json({ error: 'Atendemos de lunes a sábado, de 9:00 a.m. a 8:00 p.m. (hora Perú).' });
+      let start = startIso;
+      let end = addMinutes(startIso, service.duration_minutes);
+      let adjusted = false;
+      if (!isBusinessHours(start, end)) {
+        start = nextBusinessSlot(start, service.duration_minutes);
+        end = addMinutes(start, service.duration_minutes);
+        adjusted = true;
       }
-      const overlaps = await findOverlaps(service.id, startIso, endIso);
-      if (overlaps.length > 0) {
-        return res.status(409).json({ error: 'Horario no disponible', overlaps });
+
+      const shortNotice = new Date(start).getTime() - Date.now() < 2 * 60 * 60 * 1000;
+
+      if (shortNotice && !shortNoticeAccepted) {
+        return res.status(400).json({ error: 'Debes aceptar la política de aviso corto para continuar con la reserva.' });
+      }
+
+      const existing = await findHourBlocked(start);
+      if (existing.length > 0) {
+        return res.status(409).json({ error: 'Ya existe una cita en esta hora. Por favor elige otra franja.' });
       }
 
       const reservation = await addReservation({
@@ -147,13 +206,16 @@ export default {
         service_description: service.description || null,
         customer_name: name,
         phone: cleanPhone,
-        email: email || null,
-        start_iso: startIso,
-        end_iso: endIso,
+        start_iso: start,
+        end_iso: end,
         status: 'pending',
+        telegram_username: cleanUsername || undefined,
         chat_id: process.env.TELEGRAM_CHAT_ID || null,
         cancel_token: randomUUID(),
-        reminder_sent_at: null
+        reminder_sent_at: null,
+        barberiaId,
+        short_notice: shortNotice,
+        short_notice_accepted: Boolean(shortNoticeAccepted)
       });
 
       const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
@@ -162,22 +224,38 @@ export default {
       const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
       if (targetChat) {
         try {
-          await sendTelegramMessage(String(targetChat), `📅 Nueva reserva\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nServicio: ${service.name}\nInicio: ${formatAppointment(reservation.start_iso)}\nCancelar: ${cancelUrl}`);
+          await sendTelegramMessage(String(targetChat), `📅 Nueva reserva\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nTeléfono: ${reservation.phone}\nServicio: ${service.name}\nInicio: ${formatAppointment(reservation.start_iso)}\nCancelar: ${cancelUrl}`);
         } catch (error) {
           console.error('Error enviando Telegram - reservations.ts:144', error);
         }
       }
 
-      if (email) {
-        console.log(`Correo enviado al cliente ${email}`);
+      try {
+        await sendWhatsAppMessage(reservation.phone, `Hola ${reservation.customer_name}, tu reserva de ${service.name} para el ${formatAppointment(reservation.start_iso)} fue registrada exitosamente. ID: ${reservation.id}`);
+      } catch (error) {
+        console.error('Error enviando WhatsApp (creación) - reservations.ts', error);
+      }
+
+      if (isTwilioEnabled()) {
         try {
-          await sendEmail({ ...reservation, service_name: service.name });
+          await sendTemplateMessage(reservation.barberiaId || 'barberiaA', 'reservation_created', {
+            customer_name: reservation.customer_name,
+            service_name: service.name,
+            start_iso: formatAppointment(reservation.start_iso),
+            phone: reservation.phone
+          });
         } catch (error) {
-          console.error('Error al enviar correo al cliente:', error);
+          console.error('Error enviando WhatsApp Twilio (creación) - reservations.ts', error);
         }
       }
 
-      return res.status(201).json({ reservation: withServiceName(reservation, services), cancelUrl });
+      scheduleReminder(reservation);
+
+      const adjustedMessage = adjusted
+        ? `La hora seleccionada estaba fuera del horario de atención y fue ajustada a ${formatAppointment(start)}.`
+        : undefined;
+
+      return res.status(201).json({ reservation: withServiceName(reservation, services), cancelUrl, warning: shortNotice ? shortNoticeWarning : undefined, adjusted: adjustedMessage });
     } catch (error) {
       console.error('Error creando reserva - reservations.ts:150', error);
       return res.status(500).json({ error: 'Error interno' });
@@ -185,6 +263,7 @@ export default {
   },
 
   async remove(req: Request, res: Response) {
+    console.log('Controlador ejecutado: cancelar');
     try {
       const id = Number(req.params.id);
       if (!id) {
@@ -196,38 +275,37 @@ export default {
         return res.status(404).json({ error: 'Reserva no encontrada' });
       }
 
-      const updated = await updateReservationStatus(id, 'cancelled');
+      const { reservation: updated, late } = await cancelReservation(id);
+
+      const cancelMessage = late
+        ? '⚠️ La cita fue cancelada muy cerca de la hora programada. La franja se ha liberado para otro cliente.'
+        : '❌ La cita ha sido cancelada. La franja se ha liberado.';
 
       const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
       if (targetChat) {
         try {
-          await sendTelegramMessage(String(targetChat), `❌ Reserva cancelada\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nInicio: ${formatAppointment(reservation.start_iso)}`);
+          await sendTelegramMessage(String(targetChat), `${cancelMessage}\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nServicio: ${reservation.service_name}\nInicio: ${formatAppointment(reservation.start_iso)}`);
         } catch (error) {
           console.error('Error enviando Telegram (cancelación) - reservations.ts:174', error);
         }
       }
 
-      if (reservation.email) {
+      try {
+        await sendWhatsAppMessage(reservation.phone, cancelMessage);
+      } catch (error) {
+        console.error('Error enviando WhatsApp (cancelación) - reservations.ts', error);
+      }
+
+      if (isTwilioEnabled()) {
         try {
-          const services = await getServices();
-          const service = services.find((s) => s.id === reservation.service_id);
-          await sendEmail({
-            ...reservation,
-            service_name: service?.name || 'Servicio'
-          }, {
-            subject: 'Cancelación de reserva Barbería',
-            body: `Hola ${reservation.customer_name},
-
-Tu reserva ha sido cancelada correctamente.
-
-- ID: ${reservation.id}
-- Servicio: ${service?.name || 'Servicio'}
-- Fecha y hora: ${formatAppointment(reservation.start_iso)}
-
-Si deseas volver a reservar, puedes hacerlo desde nuestra página.`
+          await sendTemplateMessage(reservation.barberiaId || 'barberiaA', 'reservation_cancelled', {
+            customer_name: reservation.customer_name,
+            service_name: reservation.service_name,
+            start_iso: formatAppointment(reservation.start_iso),
+            phone: reservation.phone
           });
         } catch (error) {
-          console.error('Error al enviar correo de cancelación:', error);
+          console.error('Error enviando WhatsApp Twilio (cancelación) - reservations.ts', error);
         }
       }
 
@@ -239,6 +317,7 @@ Si deseas volver a reservar, puedes hacerlo desde nuestra página.`
   },
 
   async confirm(req: Request, res: Response) {
+    console.log('Controlador ejecutado: confirmar');
     try {
       const id = Number(req.params.id);
       if (!id) {
@@ -250,11 +329,13 @@ Si deseas volver a reservar, puedes hacerlo desde nuestra página.`
         return res.status(404).json({ error: 'Reserva no encontrada' });
       }
 
-      if (reservation.status === 'cancelled') {
-        return res.status(409).json({ error: 'No se puede confirmar una reserva cancelada.' });
+      let updated;
+      try {
+        updated = await confirmReservation(id);
+      } catch (error: any) {
+        return res.status(409).json({ error: error.message });
       }
 
-      const updated = await updateReservationStatus(id, 'confirmed');
       const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
       if (targetChat) {
         try {
@@ -264,27 +345,22 @@ Si deseas volver a reservar, puedes hacerlo desde nuestra página.`
         }
       }
 
-      if (reservation.email) {
+      try {
+        await sendWhatsAppMessage(reservation.phone, `Hola ${reservation.customer_name}, tu reserva (ID ${reservation.id}) ha sido CONFIRMADA. Te esperamos el ${formatAppointment(reservation.start_iso)}.`);
+      } catch (error) {
+        console.error('Error enviando WhatsApp (confirmación) - reservations.ts', error);
+      }
+
+      if (isTwilioEnabled()) {
         try {
-          const services = await getServices();
-          const service = services.find((s) => s.id === reservation.service_id);
-          await sendEmail({
-            ...reservation,
-            service_name: service?.name || 'Servicio'
-          }, {
-            subject: 'Confirmación de reserva Barbería',
-            body: `Hola ${reservation.customer_name},
-
-Tu reserva ha sido confirmada exitosamente.
-
-- ID: ${reservation.id}
-- Servicio: ${service?.name || 'Servicio'}
-- Fecha y hora: ${formatAppointment(reservation.start_iso)}
-
-¡Gracias por confiar en nosotros!`
+          await sendTemplateMessage(reservation.barberiaId || 'barberiaA', 'reservation_confirmed', {
+            customer_name: reservation.customer_name,
+            service_name: reservation.service_name,
+            start_iso: formatAppointment(reservation.start_iso),
+            phone: reservation.phone
           });
         } catch (error) {
-          console.error('Error al enviar correo de confirmación:', error);
+          console.error('Error enviando WhatsApp Twilio (confirmación) - reservations.ts', error);
         }
       }
 
@@ -328,43 +404,43 @@ Tu reserva ha sido confirmada exitosamente.
   },
 
   async cancelByToken(req: Request, res: Response) {
+    console.log('Controlador ejecutado: cancelar');
     try {
       const reservation = await getReservationByCancelToken(req.params.token);
       if (!reservation) return res.status(404).json({ error: 'Enlace de cancelación no válido.' });
       if (reservation.status === 'cancelled') return res.json({ ok: true, message: 'La reserva ya estaba cancelada.' });
 
-      await updateReservationStatus(reservation.id, 'cancelled');
+      const { late } = await cancelReservation(reservation.id);
+
+      const cancelMessage = late
+        ? '⚠️ La cita fue cancelada muy cerca de la hora programada. La franja se ha liberado para otro cliente.'
+        : '❌ La cita ha sido cancelada. La franja se ha liberado.';
 
       const targetChat = reservation.chat_id || process.env.TELEGRAM_CHAT_ID || '';
       if (targetChat) {
         try {
-          await sendTelegramMessage(targetChat, `❌ Reserva cancelada por enlace\nID: ${reservation.id}\nCliente: ${reservation.customer_name}`);
+          await sendTelegramMessage(targetChat, `${cancelMessage}\nID: ${reservation.id}\nCliente: ${reservation.customer_name}\nServicio: ${reservation.service_name}`);
         } catch (error) {
           console.error('Error enviando Telegram (cancelByToken) - reservations.ts', error);
         }
       }
 
-      if (reservation.email) {
+      try {
+        await sendWhatsAppMessage(reservation.phone, cancelMessage);
+      } catch (error) {
+        console.error('Error enviando WhatsApp (cancelByToken) - reservations.ts', error);
+      }
+
+      if (isTwilioEnabled()) {
         try {
-          const services = await getServices();
-          const service = services.find((s) => s.id === reservation.service_id);
-          await sendEmail({
-            ...reservation,
-            service_name: service?.name || 'Servicio'
-          }, {
-            subject: 'Cancelación de reserva Barbería',
-            body: `Hola ${reservation.customer_name},
-
-Tu reserva ha sido cancelada correctamente.
-
-- ID: ${reservation.id}
-- Servicio: ${service?.name || 'Servicio'}
-- Fecha y hora: ${formatAppointment(reservation.start_iso)}
-
-Si deseas volver a reservar, puedes hacerlo desde nuestra página.`
+          await sendTemplateMessage(reservation.barberiaId || 'barberiaA', 'reservation_cancelled', {
+            customer_name: reservation.customer_name,
+            service_name: reservation.service_name,
+            start_iso: formatAppointment(reservation.start_iso),
+            phone: reservation.phone
           });
         } catch (error) {
-          console.error('Error al enviar correo de cancelación:', error);
+          console.error('Error enviando WhatsApp Twilio (cancelByToken) - reservations.ts', error);
         }
       }
 

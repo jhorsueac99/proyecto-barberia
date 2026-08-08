@@ -36,7 +36,6 @@ export type Reservation = {
   service_description?: string | null;
   customer_name: string;
   phone: string;
-  email?: string | null;
   start_iso: string;
   end_iso: string;
   status: string;
@@ -44,6 +43,12 @@ export type Reservation = {
   created_at?: string;
   cancel_token: string;
   reminder_sent_at?: string | null;
+  barberiaId?: string;
+  late_cancelled?: boolean;
+  telegram_id?: string;
+  telegram_username?: string;
+  short_notice?: boolean;
+  short_notice_accepted?: boolean;
 };
 
 type DBData = {
@@ -130,6 +135,24 @@ export async function findOverlaps(serviceId: string, startIso: string, endIso: 
   });
 }
 
+export async function findHourBlocked(startIso: string): Promise<Reservation[]> {
+  const currentDb = await getDb();
+  const reservations: Reservation[] = currentDb.data.reservations || [];
+
+  const start = new Date(startIso);
+  const hourStart = new Date(start);
+  hourStart.setMinutes(0, 0, 0);
+  const hourEnd = new Date(hourStart);
+  hourEnd.setHours(hourEnd.getHours() + 1);
+
+  return reservations.filter((reservation) => {
+    if (reservation.status === 'cancelled') return false;
+
+    const reservationStart = new Date(reservation.start_iso);
+    return reservationStart >= hourStart && reservationStart < hourEnd;
+  });
+}
+
 export async function getReservationById(id: number): Promise<Reservation | null> {
   const currentDb = await getDb();
   const reservation = (currentDb.data.reservations || []).find((item: Reservation) => item.id === id);
@@ -148,6 +171,19 @@ export async function updateReservationStatus(id: number, status: string) {
   return currentDb.data.reservations[index];
 }
 
+export async function cancelReservationWithFlag(id: number, late: boolean) {
+  const currentDb = await getDb();
+  const index = (currentDb.data.reservations || []).findIndex((item: Reservation) => item.id === id);
+  if (index === -1) {
+    return null;
+  }
+
+  currentDb.data.reservations[index].status = 'cancelled';
+  currentDb.data.reservations[index].late_cancelled = late;
+  await currentDb.write();
+  return currentDb.data.reservations[index];
+}
+
 export async function getReservationByCancelToken(cancelToken: string): Promise<Reservation | null> {
   const currentDb = await getDb();
   return currentDb.data.reservations.find((item: Reservation) => item.cancel_token === cancelToken) || null;
@@ -161,4 +197,25 @@ export async function markReminderSent(id: number) {
   reservation.reminder_sent_at = new Date().toISOString();
   await currentDb.write();
   return reservation;
+}
+
+export async function linkTelegramUser(username: string, telegramId: string): Promise<Reservation[]> {
+  const currentDb = await getDb();
+  const normalized = username.replace(/^@/, '').toLowerCase();
+  const linked: Reservation[] = [];
+
+  for (const reservation of currentDb.data.reservations) {
+    const reservationUsername = (reservation.telegram_username || '').replace(/^@/, '').toLowerCase();
+    if (reservationUsername && reservationUsername === normalized && reservation.status !== 'cancelled') {
+      reservation.telegram_id = String(telegramId);
+      reservation.chat_id = String(telegramId);
+      linked.push(reservation);
+    }
+  }
+
+  if (linked.length > 0) {
+    await currentDb.write();
+  }
+
+  return linked;
 }

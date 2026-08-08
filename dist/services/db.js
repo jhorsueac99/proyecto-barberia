@@ -82,6 +82,21 @@ export async function findOverlaps(serviceId, startIso, endIso) {
                 (reservation.start_iso >= startIso && reservation.end_iso <= endIso)));
     });
 }
+export async function findHourBlocked(startIso) {
+    const currentDb = await getDb();
+    const reservations = currentDb.data.reservations || [];
+    const start = new Date(startIso);
+    const hourStart = new Date(start);
+    hourStart.setMinutes(0, 0, 0);
+    const hourEnd = new Date(hourStart);
+    hourEnd.setHours(hourEnd.getHours() + 1);
+    return reservations.filter((reservation) => {
+        if (reservation.status === 'cancelled')
+            return false;
+        const reservationStart = new Date(reservation.start_iso);
+        return reservationStart >= hourStart && reservationStart < hourEnd;
+    });
+}
 export async function getReservationById(id) {
     const currentDb = await getDb();
     const reservation = (currentDb.data.reservations || []).find((item) => item.id === id);
@@ -97,6 +112,17 @@ export async function updateReservationStatus(id, status) {
     await currentDb.write();
     return currentDb.data.reservations[index];
 }
+export async function cancelReservationWithFlag(id, late) {
+    const currentDb = await getDb();
+    const index = (currentDb.data.reservations || []).findIndex((item) => item.id === id);
+    if (index === -1) {
+        return null;
+    }
+    currentDb.data.reservations[index].status = 'cancelled';
+    currentDb.data.reservations[index].late_cancelled = late;
+    await currentDb.write();
+    return currentDb.data.reservations[index];
+}
 export async function getReservationByCancelToken(cancelToken) {
     const currentDb = await getDb();
     return currentDb.data.reservations.find((item) => item.cancel_token === cancelToken) || null;
@@ -109,4 +135,21 @@ export async function markReminderSent(id) {
     reservation.reminder_sent_at = new Date().toISOString();
     await currentDb.write();
     return reservation;
+}
+export async function linkTelegramUser(username, telegramId) {
+    const currentDb = await getDb();
+    const normalized = username.replace(/^@/, '').toLowerCase();
+    const linked = [];
+    for (const reservation of currentDb.data.reservations) {
+        const reservationUsername = (reservation.telegram_username || '').replace(/^@/, '').toLowerCase();
+        if (reservationUsername && reservationUsername === normalized && reservation.status !== 'cancelled') {
+            reservation.telegram_id = String(telegramId);
+            reservation.chat_id = String(telegramId);
+            linked.push(reservation);
+        }
+    }
+    if (linked.length > 0) {
+        await currentDb.write();
+    }
+    return linked;
 }
