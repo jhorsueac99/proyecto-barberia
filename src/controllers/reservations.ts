@@ -14,6 +14,7 @@ import { formatAppointment, isBusinessHours } from '../services/schedule.js';
 import { sendWhatsAppMessage } from '../services/whatsappService.js';
 import { isTwilioEnabled, sendTemplateMessage } from '../services/twilioService.js';
 import { notifyReservationCancelled, notifyReservationConfirmed, notifyReservationCreated } from '../reservations/notify.js';
+import { getUserByUsername } from './users.js';
 export async function crearReserva(req: Request, res: Response) {
   const reserva = await addReservation(req.body);
 
@@ -200,14 +201,13 @@ export default {
       }
 
       let existingTelegramId: string | undefined;
+      let existingChatId: string | undefined;
+
       if (cleanUsername) {
-        const normalized = cleanUsername.replace(/^@/, '').toLowerCase();
-        const allReservations = await getAllReservations();
-        const match = allReservations.find(
-          (r) => (r.telegram_username || '').replace(/^@/, '').toLowerCase() === normalized && r.telegram_id
-        );
-        if (match?.telegram_id) {
-          existingTelegramId = match.telegram_id;
+        const user = await getUserByUsername(cleanUsername);
+        if (user) {
+          existingTelegramId = user.telegram_id;
+          existingChatId = user.chat_id;
         }
       }
 
@@ -223,7 +223,7 @@ export default {
         status: 'pending',
         telegram_username: cleanUsername || undefined,
         telegram_id: existingTelegramId,
-        chat_id: existingTelegramId || process.env.TELEGRAM_CHAT_ID || null,
+        chat_id: existingChatId || process.env.TELEGRAM_CHAT_ID || null,
         cancel_token: randomUUID(),
         reminder_sent_at: null,
         barberiaId,

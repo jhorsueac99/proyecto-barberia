@@ -2,6 +2,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import { TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME } from '../config/telegram.js';
 import { cancelReservationByTelegramId } from '../services/reservationService.js';
 import { linkTelegramUser } from '../services/db.js';
+import { linkTelegramUser as linkUserToCollection } from '../controllers/users.js';
 
 interface BotMessage {
   chat: { id: number };
@@ -51,8 +52,16 @@ export function startTelegramBot() {
     }
   });
 
-  // Comando /start: vincula la cuenta y confirma
+  // Comando /start: vincula la cuenta, guarda el usuario y confirma
   bot.onText(/\/start/, async (msg) => {
+    const from = msg.from;
+    if (from) {
+      await linkUserToCollection(
+        from.username || String(from.id),
+        String(from.id),
+        String(msg.chat.id)
+      );
+    }
     await linkClient(msg);
     bot.sendMessage(msg.chat.id, '¡Perfecto! Tu cuenta de Telegram ha sido vinculada. Ahora recibirás recordatorios de tus citas.');
     console.log(`✅ Bot de Telegram: bienvenida enviada a ${msg.chat.id}`);

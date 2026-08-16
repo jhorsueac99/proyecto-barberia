@@ -28,6 +28,14 @@ export type Service = {
   description?: string;
 };
 
+export type User = {
+  id: string;
+  username?: string;
+  telegram_id: string;
+  chat_id: string;
+  created_at?: string;
+};
+
 export type Reservation = {
   id: number;
   service_id: string;
@@ -54,6 +62,7 @@ export type Reservation = {
 type DBData = {
   services: Service[];
   reservations: Reservation[];
+  users: User[];
 };
 
 const defaultData: DBData = {
@@ -64,12 +73,13 @@ const defaultData: DBData = {
     { id: 'vip_degradado_cejas_exfoliante', name: 'Servicio VIP', price: 25, duration_minutes: 50, description: 'Degradado + cejas + exfoliante facial premium.' },
     { id: 'presidencial_completo', name: 'Servicio Presidencial completo', price: 30, duration_minutes: 60, description: 'Degradado + cejas + exfoliante + mascarilla negra + lavado de cabello + bebida de cortesía.' }
   ],
-  reservations: []
+  reservations: [],
+  users: []
 };
 
 let db: any = null;
 
-async function getDb() {
+export async function getDb() {
   if (!db) {
     const adapter = new WriteFileAdapter<DBData>(DB_PATH);
     db = new Low<DBData>(adapter);
@@ -84,6 +94,10 @@ async function getDb() {
 
   if (!Array.isArray(db.data.reservations)) {
     db.data.reservations = [];
+  }
+
+  if (!Array.isArray(db.data.users)) {
+    db.data.users = [];
   }
 
   db.data.reservations.forEach((reservation: Reservation) => {
@@ -218,4 +232,39 @@ export async function linkTelegramUser(username: string, telegramId: string): Pr
   }
 
   return linked;
+}
+
+export async function upsertUser(data: { id?: string; username?: string; telegram_id: string; chat_id: string }): Promise<User> {
+  const currentDb = await getDb();
+  const users: User[] = currentDb.data.users || [];
+  const existing = users.find((u) => u.telegram_id === data.telegram_id);
+
+  if (existing) {
+    if (data.username) existing.username = data.username;
+    existing.chat_id = data.chat_id;
+    await currentDb.write();
+    return existing;
+  }
+
+  const user: User = {
+    id: data.id || String(Date.now()),
+    username: data.username,
+    telegram_id: data.telegram_id,
+    chat_id: data.chat_id,
+    created_at: new Date().toISOString()
+  };
+  users.push(user);
+  await currentDb.write();
+  return user;
+}
+
+export async function findUserByUsername(username: string): Promise<User | null> {
+  const currentDb = await getDb();
+  const normalized = username.replace(/^@/, '').toLowerCase();
+  return (currentDb.data.users || []).find((u) => (u.username || '').replace(/^@/, '').toLowerCase() === normalized) || null;
+}
+
+export async function findUserByTelegramId(telegramId: string): Promise<User | null> {
+  const currentDb = await getDb();
+  return (currentDb.data.users || []).find((u) => u.telegram_id === telegramId) || null;
 }
