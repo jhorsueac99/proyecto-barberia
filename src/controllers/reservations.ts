@@ -199,6 +199,18 @@ export default {
         return res.status(409).json({ error: 'Ya existe una cita en esta hora. Por favor elige otra franja.' });
       }
 
+      let existingTelegramId: string | undefined;
+      if (cleanUsername) {
+        const normalized = cleanUsername.replace(/^@/, '').toLowerCase();
+        const allReservations = await getAllReservations();
+        const match = allReservations.find(
+          (r) => (r.telegram_username || '').replace(/^@/, '').toLowerCase() === normalized && r.telegram_id
+        );
+        if (match?.telegram_id) {
+          existingTelegramId = match.telegram_id;
+        }
+      }
+
       const reservation = await addReservation({
         service_id: service.id,
         service_name: service.name,
@@ -210,7 +222,8 @@ export default {
         end_iso: end,
         status: 'pending',
         telegram_username: cleanUsername || undefined,
-        chat_id: process.env.TELEGRAM_CHAT_ID || null,
+        telegram_id: existingTelegramId,
+        chat_id: existingTelegramId || process.env.TELEGRAM_CHAT_ID || null,
         cancel_token: randomUUID(),
         reminder_sent_at: null,
         barberiaId,
